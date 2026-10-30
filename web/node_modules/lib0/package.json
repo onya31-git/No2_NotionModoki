@@ -1,0 +1,377 @@
+{
+  "name": "lib0",
+  "version": "1.0.0-rc.36",
+  "description": "isomorphic utility functions",
+  "sideEffects": false,
+  "type": "module",
+  "funding": {
+    "type": "GitHub Sponsors ❤",
+    "url": "https://github.com/sponsors/dmonad"
+  },
+  "bin": {
+    "0gentesthtml": "src/bin/gentesthtml.js",
+    "0serve": "src/bin/0serve.js",
+    "0ecdsa-generate-keypair": "src/bin/0ecdsa-generate-keypair.js"
+  },
+  "files": [
+    "dist/**/*.d.ts",
+    "!dist/**/*test.d.ts",
+    "src/**/*.js",
+    "!src/**/*test.js",
+    "!src/test-setup.js"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./array": {
+      "types": "./dist/array.d.ts",
+      "default": "./src/array.js"
+    },
+    "./binary": {
+      "types": "./dist/binary.d.ts",
+      "default": "./src/binary.js"
+    },
+    "./broadcastchannel": {
+      "types": "./dist/broadcastchannel.d.ts",
+      "default": "./src/broadcastchannel.js"
+    },
+    "./buffer": {
+      "types": "./dist/buffer.d.ts",
+      "default": "./src/buffer.js"
+    },
+    "./cache": {
+      "types": "./dist/cache.d.ts",
+      "default": "./src/cache.js"
+    },
+    "./conditions": {
+      "types": "./dist/conditions.d.ts",
+      "default": "./src/conditions.js"
+    },
+    "./crypto/jwt": {
+      "types": "./dist/crypto/jwt.d.ts",
+      "default": "./src/crypto/jwt.js"
+    },
+    "./crypto/aes-gcm": {
+      "types": "./dist/crypto/aes-gcm.d.ts",
+      "default": "./src/crypto/aes-gcm.js"
+    },
+    "./delta": {
+      "types": "./dist/delta/delta.d.ts",
+      "default": "./src/delta/delta.js"
+    },
+    "./delta/transformer": {
+      "types": "./dist/delta/transformer.d.ts",
+      "default": "./src/delta/transformer.js"
+    },
+    "./delta/position": {
+      "types": "./dist/delta/position.d.ts",
+      "default": "./src/delta/position.js"
+    },
+    "./delta/transformer/inline": {
+      "types": "./dist/delta/transformer/inline.d.ts",
+      "default": "./src/delta/transformer/inline.js"
+    },
+    "./delta/transformer/children": {
+      "types": "./dist/delta/transformer/children.d.ts",
+      "default": "./src/delta/transformer/children.js"
+    },
+    "./delta/transformer/id": {
+      "types": "./dist/delta/transformer/id.d.ts",
+      "default": "./src/delta/transformer/id.js"
+    },
+    "./delta/transformer/rename": {
+      "types": "./dist/delta/transformer/rename.d.ts",
+      "default": "./src/delta/transformer/rename.js"
+    },
+    "./delta/transformer/filter": {
+      "types": "./dist/delta/transformer/filter.d.ts",
+      "default": "./src/delta/transformer/filter.js"
+    },
+    "./delta/transformer/pipe": {
+      "types": "./dist/delta/transformer/pipe.d.ts",
+      "default": "./src/delta/transformer/pipe.js"
+    },
+    "./delta/transformer/attr": {
+      "types": "./dist/delta/transformer/attr.d.ts",
+      "default": "./src/delta/transformer/attr.js"
+    },
+    "./delta/transformer/project": {
+      "types": "./dist/delta/transformer/project.d.ts",
+      "default": "./src/delta/transformer/project.js"
+    },
+    "./delta/transformer/value": {
+      "types": "./dist/delta/transformer/value.d.ts",
+      "default": "./src/delta/transformer/value.js"
+    },
+    "./delta/transformer/rename-attrs": {
+      "types": "./dist/delta/transformer/rename-attrs.d.ts",
+      "default": "./src/delta/transformer/rename-attrs.js"
+    },
+    "./delta/transformer/attribution-to-format": {
+      "types": "./dist/delta/transformer/attribution-to-format.d.ts",
+      "default": "./src/delta/transformer/attribution-to-format.js"
+    },
+    "./delta/transformer/full-attributions": {
+      "types": "./dist/delta/transformer/full-attributions.d.ts",
+      "default": "./src/delta/transformer/full-attributions.js"
+    },
+    "./delta/rdt": {
+      "types": "./dist/delta/rdt.d.ts",
+      "default": "./src/delta/rdt.js"
+    },
+    "./delta/rdt/delta": {
+      "types": "./dist/delta/rdt/delta.d.ts",
+      "default": "./src/delta/rdt/delta.js"
+    },
+    "./delta/rdt/dom": {
+      "types": "./dist/delta/rdt/dom.d.ts",
+      "default": "./src/delta/rdt/dom.js"
+    },
+    "./crypto/ecdsa": {
+      "types": "./dist/crypto/ecdsa.d.ts",
+      "default": "./src/crypto/ecdsa.js"
+    },
+    "./crypto/rsa-oaep": {
+      "types": "./dist/crypto/rsa-oaep.d.ts",
+      "default": "./src/crypto/rsa-oaep.js"
+    },
+    "./hash/fnv1a": {
+      "types": "./dist/hash/fnv1a.d.ts",
+      "default": "./src/hash/fnv1a.js"
+    },
+    "./hash/rabin": {
+      "types": "./dist/hash/rabin.d.ts",
+      "default": "./src/hash/rabin.js"
+    },
+    "./hash/sha256": {
+      "types": "./dist/hash/sha256.d.ts",
+      "browser": "./src/hash/sha256.js",
+      "node": "./src/hash/sha256.node.js",
+      "default": "./src/hash/sha256.js"
+    },
+    "./decoding": {
+      "types": "./dist/decoding.d.ts",
+      "default": "./src/decoding.js"
+    },
+    "./diff/patience": {
+      "types": "./dist/diff/patience.d.ts",
+      "default": "./src/diff/patience.js"
+    },
+    "./diff": {
+      "types": "./dist/diff.d.ts",
+      "default": "./src/diff.js"
+    },
+    "./dom": {
+      "types": "./dist/dom.d.ts",
+      "default": "./src/dom.js"
+    },
+    "./encoding": {
+      "types": "./dist/encoding.d.ts",
+      "default": "./src/encoding.js"
+    },
+    "./environment": {
+      "types": "./dist/environment.d.ts",
+      "default": "./src/environment.js"
+    },
+    "./error": {
+      "types": "./dist/error.d.ts",
+      "default": "./src/error.js"
+    },
+    "./eventloop": {
+      "types": "./dist/eventloop.d.ts",
+      "default": "./src/eventloop.js"
+    },
+    "./function": {
+      "types": "./dist/function.d.ts",
+      "default": "./src/function.js"
+    },
+    "./indexeddb": {
+      "types": "./dist/indexeddb.d.ts",
+      "default": "./src/indexeddb.js"
+    },
+    "./iterator": {
+      "types": "./dist/iterator.d.ts",
+      "default": "./src/iterator.js"
+    },
+    "./json": {
+      "types": "./dist/json.d.ts",
+      "default": "./src/json.js"
+    },
+    "./list": {
+      "types": "./dist/list.d.ts",
+      "default": "./src/list.js"
+    },
+    "./logging": {
+      "types": "./dist/logging.node.d.ts",
+      "deno": "./src/logging.node.js",
+      "bun": "./src/logging.js",
+      "node": "./src/logging.node.js",
+      "browser": "./src/logging.js",
+      "default": "./src/logging.js"
+    },
+    "./map": {
+      "types": "./dist/map.d.ts",
+      "default": "./src/map.js"
+    },
+    "./math": {
+      "types": "./dist/math.d.ts",
+      "default": "./src/math.js"
+    },
+    "./metric": {
+      "types": "./dist/metric.d.ts",
+      "default": "./src/metric.js"
+    },
+    "./mutex": {
+      "types": "./dist/mutex.d.ts",
+      "default": "./src/mutex.js"
+    },
+    "./number": {
+      "types": "./dist/number.d.ts",
+      "default": "./src/number.js"
+    },
+    "./object": {
+      "types": "./dist/object.d.ts",
+      "default": "./src/object.js"
+    },
+    "./observable": {
+      "types": "./dist/observable.d.ts",
+      "default": "./src/observable.js"
+    },
+    "./pair": {
+      "types": "./dist/pair.d.ts",
+      "default": "./src/pair.js"
+    },
+    "./prng": {
+      "types": "./dist/prng.d.ts",
+      "default": "./src/prng.js"
+    },
+    "./promise": {
+      "types": "./dist/promise.d.ts",
+      "default": "./src/promise.js"
+    },
+    "./queue": {
+      "types": "./dist/queue.d.ts",
+      "default": "./src/queue.js"
+    },
+    "./random": {
+      "types": "./dist/random.d.ts",
+      "default": "./src/random.js"
+    },
+    "./set": {
+      "types": "./dist/set.d.ts",
+      "default": "./src/set.js"
+    },
+    "./sort": {
+      "types": "./dist/sort.d.ts",
+      "default": "./src/sort.js"
+    },
+    "./statistics": {
+      "types": "./dist/statistics.d.ts",
+      "default": "./src/statistics.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "default": "./src/storage.js"
+    },
+    "./string": {
+      "types": "./dist/string.d.ts",
+      "default": "./src/string.js"
+    },
+    "./symbol": {
+      "types": "./dist/symbol.d.ts",
+      "default": "./src/symbol.js"
+    },
+    "./traits": {
+      "types": "./dist/trait/traits.d.ts",
+      "default": "./src/trait/traits.js"
+    },
+    "./trait/fingerprint": {
+      "types": "./dist/trait/fingerprint.d.ts",
+      "default": "./src/trait/fingerprint.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./src/testing.js"
+    },
+    "./time": {
+      "types": "./dist/time.d.ts",
+      "default": "./src/time.js"
+    },
+    "./url": {
+      "types": "./dist/url.d.ts",
+      "default": "./src/url.js"
+    },
+    "./websocket": {
+      "types": "./dist/websocket.d.ts",
+      "default": "./src/websocket.js"
+    },
+    "./webcrypto": {
+      "types": "./dist/webcrypto.d.ts",
+      "deno": "./src/webcrypto.deno.js",
+      "react-native": "./src/webcrypto.react-native.js",
+      "node": "./src/webcrypto.node.js",
+      "bun": "./src/webcrypto.js",
+      "browser": "./src/webcrypto.js",
+      "default": "./src/webcrypto.js"
+    },
+    "./ts": {
+      "types": "./dist/ts.d.ts",
+      "default": "./src/ts.js"
+    },
+    "./performance": {
+      "types": "./dist/performance.d.ts",
+      "deno": "./src/performance.node.js",
+      "bun": "./src/performance.node.js",
+      "browser": "./src/performance.js",
+      "node": "./src/performance.node.js",
+      "default": "./src/performance.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./src/schema.js"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "c8": "^12.0.0",
+    "dpdm": "^4.0.1",
+    "jsdom": "^30.0.1",
+    "standard": "^17.1.0",
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "types": "rm -rf dist && tsc -p tsconfig.build.json",
+    "check-dist-types": "node ./dist-check/copy-tests.js && tsc -p tsconfig.dist-check.json",
+    "dist": "npm run clean && npm run types && npm run check-dist-types",
+    "debug": "npm run gentesthtml && node ./src/bin/0serve.js -o test.html",
+    "test": "c8 --check-coverage --lines 97 --branches 96 --functions 94 --statements 97 node --unhandled-rejections=strict ./src/test.js",
+    "test:deno": "deno run -A src/test.js",
+    "test-inspect": "node --inspect-brk --unhandled-rejections=strict ./src/test.js --repetition-time 50",
+    "test-extensive": "node ./src/test.js --repetition-time 1000 --extensive",
+    "test:bundle": "esbuild src/bundle.test.js --bundle --outfile=dist/bundle.test.js --analyze --minify && wc -c dist/bundle.test.js",
+    "trace-deopt": "clear && node --trace-deopt src/test.js",
+    "trace-opt": "clear && node --trace-opt src/test.js",
+    "lint": "tsc && standard && npx dpdm --exit-code circular:1 --warning false --tree false src/test.js",
+    "postpublish": "npm run clean",
+    "gentesthtml": "node ./src/bin/gentesthtml.js --script src/test.js > test.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmonad/lib0.git"
+  },
+  "author": "Kevin Jahns <kevin.jahns@protonmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dmonad/lib0/issues"
+  },
+  "homepage": "https://github.com/dmonad/lib0#readme",
+  "standard": {
+    "ignore": [
+      "/dist",
+      "/node_modules"
+    ]
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

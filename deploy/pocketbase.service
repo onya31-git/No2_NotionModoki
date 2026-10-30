@@ -1,0 +1,21 @@
+[Unit]
+Description=PocketBase (RasStation)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/pocketbase
+ExecStart=/home/pi/pocketbase/pocketbase serve --http=0.0.0.0:8090
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=4096
+# Go ランタイムに GC を早めに効かせるソフト上限（通常稼働は数十MB程度）
+Environment=GOMEMLIMIT=256MiB
+# 万一の暴走時に Pi 全体を巻き込まないためのハード上限
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target
