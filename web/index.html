@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RasStation</title>
+    <script>
+      // JS バンドルの読み込み前に配色を決め、ダークモードで白く光るのを防ぐ（本処理は src/settings.ts）
+      try {
+        var t = (JSON.parse(localStorage.getItem("rs.settings") || "{}").theme) || "system";
+        if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

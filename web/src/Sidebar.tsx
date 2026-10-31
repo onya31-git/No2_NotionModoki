@@ -1,9 +1,10 @@
-import { useState, type DragEvent, type ReactNode } from "react";
+import { useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { PageSummary } from "./pb";
 import type { PageTree } from "./tree";
 import { PageGlyph, pageLabel } from "./ui";
 import { handleLinkClick, pageHref } from "./workspace";
-import { ChevronIcon, ChevronsLeftIcon, PlusIcon, SearchIcon, TrashIcon } from "./icons";
+import { ChevronIcon, ChevronsLeftIcon, PlusIcon, SearchIcon, SettingsIcon, TrashIcon } from "./icons";
+import { SIDEBAR_MAX, SIDEBAR_MIN, resetSidebarWidth, updateSettings } from "./settings";
 
 export type DropPos = "before" | "after" | "inside";
 type Drag = { id: string; over: string | null; pos: DropPos | null };
@@ -23,7 +24,12 @@ type Props = {
   onMove: (id: string, target: string | null, pos: DropPos) => void;
   onSearch: () => void;
   onOpenTrash: () => void;
+  onOpenSettings: () => void;
   onCollapse: () => void;
+  /** 折りたたみ中にマウスオーバーで重ねて表示している状態。閉じるボタンは「固定」になる */
+  peek: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 };
 
 export function Sidebar(props: Props) {
@@ -36,11 +42,15 @@ export function Sidebar(props: Props) {
     .sort((a, b) => a.created.localeCompare(b.created));
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" onMouseEnter={props.onMouseEnter} onMouseLeave={props.onMouseLeave}>
       <div className="sidebar-header">
         <span className="brand-mark">R</span>
         <span className="brand">RasStation</span>
-        <button className="icon-btn sidebar-collapse" title="サイドバーを閉じる (Ctrl+\)" onClick={props.onCollapse}>
+        <button
+          className={`icon-btn sidebar-collapse${props.peek ? " pin" : ""}`}
+          title={props.peek ? "サイドバーを固定 (Ctrl+\\)" : "サイドバーを閉じる (Ctrl+\\)"}
+          onClick={props.onCollapse}
+        >
           <ChevronsLeftIcon />
         </button>
       </div>
@@ -97,13 +107,46 @@ export function Sidebar(props: Props) {
       </div>
 
       <div className="sidebar-footer">
+        <button className="sidebar-action" onClick={props.onOpenSettings}>
+          <SettingsIcon />
+          設定
+        </button>
         <button className="sidebar-action" onClick={props.onOpenTrash}>
           <TrashIcon />
           ゴミ箱
         </button>
       </div>
+      <div
+        className="sidebar-resizer"
+        title="ドラッグで幅を変更（ダブルクリックで元に戻す）"
+        onPointerDown={startSidebarResize}
+        onDoubleClick={resetSidebarWidth}
+      />
     </aside>
   );
+}
+
+/** サイドバー右端のドラッグで幅を変える。ドラッグ中は CSS 変数だけ書き換え、離したときに保存する */
+function startSidebarResize(e: ReactPointerEvent<HTMLDivElement>) {
+  e.preventDefault();
+  const handle = e.currentTarget;
+  handle.setPointerCapture(e.pointerId);
+  const startX = e.clientX;
+  const startW = handle.parentElement!.getBoundingClientRect().width;
+  let width = startW;
+  document.body.classList.add("rs-resizing");
+  const onMove = (ev: PointerEvent) => {
+    width = Math.round(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startW + ev.clientX - startX)));
+    document.documentElement.style.setProperty("--sidebar-w", `${width}px`);
+  };
+  const onUp = () => {
+    handle.removeEventListener("pointermove", onMove);
+    handle.removeEventListener("pointerup", onUp);
+    document.body.classList.remove("rs-resizing");
+    updateSettings({ sidebarWidth: width });
+  };
+  handle.addEventListener("pointermove", onMove);
+  handle.addEventListener("pointerup", onUp);
 }
 
 type DropProps = {

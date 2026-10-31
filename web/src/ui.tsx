@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { PageSummary } from "./pb";
 import { PageIcon, TableIcon } from "./icons";
 
@@ -29,12 +30,12 @@ export function PageGlyph({ icon, database }: { icon: string; database?: boolean
   return <span className="page-glyph">{database ? <TableIcon /> : <PageIcon />}</span>;
 }
 
-/** ref の外側クリックや Esc で閉じる */
-function useDismiss(ref: RefObject<HTMLElement | null>, onClose: () => void, active: boolean) {
+/** refs のいずれの外側をクリックしても、Esc を押しても閉じる */
+function useDismiss(refs: RefObject<HTMLElement | null>[], onClose: () => void, active: boolean) {
   useEffect(() => {
     if (!active) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (!refs.some((r) => r.current?.contains(e.target as Node))) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -45,12 +46,14 @@ function useDismiss(ref: RefObject<HTMLElement | null>, onClose: () => void, act
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [ref, onClose, active]);
+    // refs は呼び出し側で毎回作る配列なので依存に含めない（中身の ref オブジェクトは不変）
+  }, [onClose, active]);
 }
 
 /**
  * トリガーの直下に開くポップオーバー。トリガーも含めて外側判定するので、トリガー再クリックで閉じられる。
- * fixed は横スクロールする表の中など、親の overflow で切れてしまう場所で使う（画面基準で配置する）。
+ * fixed は横スクロールする表の中など、親の overflow で切れてしまう場所で使う。
+ * 画面基準で配置し、document.body 直下に描画する（祖先に backdrop-filter 等があると fixed の基準がずれるため）。
  */
 export function Dropdown(props: {
   open: boolean;
@@ -61,8 +64,9 @@ export function Dropdown(props: {
   fixed?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<CSSProperties | undefined>();
-  useDismiss(ref, props.onClose, props.open);
+  useDismiss([ref, popRef], props.onClose, props.open);
 
   useLayoutEffect(() => {
     if (!props.open || !props.fixed || !ref.current) return;
@@ -82,20 +86,22 @@ export function Dropdown(props: {
   useEffect(() => {
     if (!props.open || !props.fixed) return;
     const onScroll = (e: Event) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      if (!popRef.current?.contains(e.target as Node)) onClose();
     };
     window.addEventListener("scroll", onScroll, true);
     return () => window.removeEventListener("scroll", onScroll, true);
   }, [props.open, props.fixed, onClose]);
 
+  const popover = (
+    <div ref={popRef} className={`popover popover-${props.align ?? "left"}`} style={props.fixed ? pos : undefined}>
+      {props.children}
+    </div>
+  );
+
   return (
     <div ref={ref} className="popover-anchor">
       {props.trigger}
-      {props.open && (!props.fixed || pos) && (
-        <div className={`popover popover-${props.align ?? "left"}`} style={props.fixed ? pos : undefined}>
-          {props.children}
-        </div>
-      )}
+      {props.open && (props.fixed ? pos && createPortal(popover, document.body) : popover)}
     </div>
   );
 }

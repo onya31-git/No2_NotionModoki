@@ -18,7 +18,10 @@ export type DatabaseConfig = {
   sort?: SortSpec | null;
   /** ボード表示でグループ化するセレクト列の ID */
   groupBy?: string;
+  /** ボードのカードに表示しないプロパティの列 ID（新しく追加した列は表示される） */
+  cardHidden?: string[];
 };
+export type PageFont = "" | "serif" | "mono";
 export type PropValue = string | number | boolean | string[] | null;
 
 export type PageRecord = {
@@ -32,6 +35,9 @@ export type PageRecord = {
   favorite: boolean;
   trashed: boolean;
   fullWidth: boolean;
+  font: PageFont;
+  smallText: boolean;
+  coverY: number; // カバー画像の縦位置。0 は未設定（中央）、1〜100 が上端〜下端
   sort: number; // 兄弟内の表示順
   database: DatabaseConfig | null; // データベースページのみ
   props: Record<string, PropValue> | null; // データベース行のプロパティ値
@@ -41,7 +47,7 @@ export type PageRecord = {
 
 /** サイドバー・検索用。content は重いので含めない */
 export type PageSummary = Omit<PageRecord, "content">;
-export const SUMMARY_FIELDS = "id,title,icon,cover,parent,favorite,trashed,fullWidth,sort,database,props,created,updated";
+export const SUMMARY_FIELDS = "id,title,icon,cover,parent,favorite,trashed,fullWidth,font,smallText,coverY,sort,database,props,created,updated";
 
 export type SaveStatus = "saved" | "pending" | "saving" | "error";
 

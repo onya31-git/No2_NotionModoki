@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { ClientResponseError } from "pocketbase";
 import { ja } from "@blocknote/core/locales";
-import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView, darkDefaultTheme, lightDefaultTheme, type Theme } from "@blocknote/mantine";
+import { FormattingToolbarController, SideMenuController, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
+import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { pages, uploadFile, type PageRecord, type PageSummary, type SaveStatus } from "./pb";
-import { CoverPicker, EmojiPicker, coverStyle, randomCover, randomEmoji } from "./pickers";
+import { COVERS, CoverPicker, EmojiPicker, coverStyle, randomCover, randomEmoji } from "./pickers";
+import { BlockFormattingToolbar, BlockSideMenu } from "./blockMenu";
+import { columnDropCursor } from "./columns";
+import { useResolvedTheme } from "./settings";
 import { Dropdown } from "./ui";
 import { filterSuggestionItems, mentionMenuItems, schema, slashMenuItems, type EditorBlock } from "./blocks";
 import { DatabaseView, PropertiesPanel } from "./database";
@@ -14,22 +17,6 @@ import { useWorkspace } from "./workspace";
 import { ImageIcon, SmileIcon } from "./icons";
 
 const SAVE_DELAY_MS = 2000;
-
-const FONT = `"Inter", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif`;
-
-// エディタの背景・文字色を style.css の --bg / --text と揃える
-const EDITOR_THEME: { light: Theme; dark: Theme } = {
-  light: {
-    ...lightDefaultTheme,
-    colors: { ...lightDefaultTheme.colors, editor: { text: "#37352f", background: "#ffffff" } },
-    fontFamily: FONT,
-  },
-  dark: {
-    ...darkDefaultTheme,
-    colors: { ...darkDefaultTheme.colors, editor: { text: "#e6e6e4", background: "#191919" } },
-    fontFamily: FONT,
-  },
-};
 
 type Callbacks = {
   /** サーバーへ送らずに一覧の表示だけ更新する（入力中のタイトル、保存後の更新日時） */
@@ -170,7 +157,12 @@ function Editor(props: BodyProps) {
     dictionary: ja,
     // 画像・動画・ファイルブロックのアップロード先を PocketBase にする
     uploadFile: (file) => uploadFile(file, page.id),
+    // ブロックを他のブロックの左右へドラッグしたときに、縦線のドロップ位置を出す（段組みの作成）
+    dropCursor: columnDropCursor,
   });
+  // ライト・ダークはアプリの設定に従わせる。配色の細部とフォントは style.css で CSS 変数を上書きする
+  // （テーマをオブジェクトで渡すと BlockNote が OS の設定で配色を決めてしまうため、文字列で渡す）
+  const theme = useResolvedTheme();
 
   const title = useRef(page.title);
   const scheduleSave = useAutosave(page.id, () => ({ title: title.current, content: editor.document }), props);
@@ -191,7 +183,17 @@ function Editor(props: BodyProps) {
       }}
     >
       {db?.database && <PropertiesPanel row={meta} db={db} readOnly={readOnly} />}
-      <BlockNoteView editor={editor} editable={!readOnly} onChange={scheduleSave} theme={EDITOR_THEME} slashMenu={false}>
+      <BlockNoteView
+        editor={editor}
+        editable={!readOnly}
+        onChange={scheduleSave}
+        theme={theme}
+        slashMenu={false}
+        sideMenu={false}
+        formattingToolbar={false}
+      >
+        <SideMenuController sideMenu={BlockSideMenu} />
+        <FormattingToolbarController formattingToolbar={BlockFormattingToolbar} />
         <SuggestionMenuController
           triggerCharacter="/"
           getItems={async (query) => filterSuggestionItems(slashMenuItems(editor, ws, page.id), query)}
@@ -235,9 +237,7 @@ function PageHeader({
 }: BodyProps & { onTitleChange: (v: string) => void; onTitleEnter?: () => void; children: ReactNode }) {
   const [title, setTitle] = useState(page.title);
   const [iconOpen, setIconOpen] = useState(false);
-  const [coverOpen, setCoverOpen] = useState(false);
   const closeIcon = useCallback(() => setIconOpen(false), []);
-  const closeCover = useCallback(() => setCoverOpen(false), []);
   const titleEl = useRef<HTMLTextAreaElement>(null);
 
   const setMeta = (patch: Partial<PageSummary>) => onUpdate(page.id, patch);
@@ -255,48 +255,15 @@ function PageHeader({
     (meta.fullWidth || meta.database) && "full-width",
     meta.cover && "has-cover",
     meta.icon && "has-icon",
+    meta.font && `font-${meta.font}`,
+    meta.smallText && "small-text",
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
     <div className={wrapClass}>
-      {meta.cover && (
-        <div className="page-cover" style={coverStyle(meta.cover)}>
-          {!readOnly && (
-            <div className={`cover-actions${coverOpen ? " open" : ""}`}>
-              <Dropdown
-                open={coverOpen}
-                onClose={closeCover}
-                align="right"
-                trigger={
-                  <button className="cover-btn" onClick={() => setCoverOpen((o) => !o)}>
-                    カバーを変更
-                  </button>
-                }
-              >
-                <CoverPicker
-                  onPick={(cover) => {
-                    setMeta({ cover });
-                    setCoverOpen(false);
-                  }}
-                  onUpload={async (file) => {
-                    try {
-                      setMeta({ cover: await uploadFile(file, page.id) });
-                      setCoverOpen(false);
-                    } catch (err) {
-                      alert(`アップロードに失敗しました: ${err}`);
-                    }
-                  }}
-                />
-              </Dropdown>
-              <button className="cover-btn" onClick={() => setMeta({ cover: "" })}>
-                削除
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {meta.cover && <PageCover page={page} meta={meta} readOnly={readOnly} onUpdate={onUpdate} />}
 
       <article className="page">
         <div className="page-head">
@@ -373,6 +340,94 @@ function PageHeader({
 
         {children}
       </article>
+    </div>
+  );
+}
+
+/** カバー。画像は「位置を調整」で上下にドラッグして表示位置を変えられる */
+function PageCover({ page, meta, readOnly, onUpdate }: Pick<BodyProps, "page" | "meta" | "readOnly" | "onUpdate">) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const [dragY, setDragY] = useState<number | null>(null); // 調整中の位置（null は調整していない）
+  const drag = useRef<{ y: number; start: number; height: number } | null>(null);
+  const setMeta = (patch: Partial<PageSummary>) => onUpdate(page.id, patch);
+  const isImage = !COVERS[meta.cover];
+  const y = dragY ?? (meta.coverY || 50);
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (dragY === null || (e.target as HTMLElement).closest("button")) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { y: e.clientY, start: dragY, height: e.currentTarget.getBoundingClientRect().height };
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    // 下へドラッグすると画像の上側が見える（背景位置は逆向きに動く）
+    setDragY(Math.min(100, Math.max(0, d.start - ((e.clientY - d.y) / d.height) * 100)));
+  };
+
+  return (
+    <div
+      className={`page-cover${dragY !== null ? " repositioning" : ""}`}
+      style={coverStyle(meta.cover, y)}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={() => (drag.current = null)}
+    >
+      {dragY !== null && <div className="cover-hint">ドラッグして画像の位置を調整</div>}
+      {!readOnly &&
+        (dragY !== null ? (
+          <div className="cover-actions open">
+            <button
+              className="cover-btn"
+              onClick={() => {
+                setMeta({ coverY: Math.max(1, Math.round(dragY)) }); // 0 は「未設定（中央）」なので 1 以上で保存
+                setDragY(null);
+              }}
+            >
+              位置を保存
+            </button>
+            <button className="cover-btn" onClick={() => setDragY(null)}>
+              キャンセル
+            </button>
+          </div>
+        ) : (
+          <div className={`cover-actions${open ? " open" : ""}`}>
+            <Dropdown
+              open={open}
+              onClose={close}
+              align="right"
+              trigger={
+                <button className="cover-btn" onClick={() => setOpen((o) => !o)}>
+                  カバーを変更
+                </button>
+              }
+            >
+              <CoverPicker
+                onPick={(cover) => {
+                  setMeta({ cover, coverY: 0 });
+                  setOpen(false);
+                }}
+                onUpload={async (file) => {
+                  try {
+                    setMeta({ cover: await uploadFile(file, page.id), coverY: 0 });
+                    setOpen(false);
+                  } catch (err) {
+                    alert(`アップロードに失敗しました: ${err}`);
+                  }
+                }}
+              />
+            </Dropdown>
+            {isImage && (
+              <button className="cover-btn" onClick={() => setDragY(meta.coverY || 50)}>
+                位置を調整
+              </button>
+            )}
+            <button className="cover-btn" onClick={() => setMeta({ cover: "" })}>
+              削除
+            </button>
+          </div>
+        ))}
     </div>
   );
 }

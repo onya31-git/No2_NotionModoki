@@ -4,8 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RasStation</title>
-    <script type="module" crossorigin src="/assets/index-B6baegrf.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-D2XvYYqi.css">
+    <script>
+      // JS バンドルの読み込み前に配色を決め、ダークモードで白く光るのを防ぐ（本処理は src/settings.ts）
+      try {
+        var t = (JSON.parse(localStorage.getItem("rs.settings") || "{}").theme) || "system";
+        if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+    <script type="module" crossorigin src="/assets/index-5E2UVFjL.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BXDUl2vp.css">
   </head>
   <body>
     <div id="root"></div>

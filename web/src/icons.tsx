@@ -194,3 +194,55 @@ export const CheckIcon = () => (
     <path d="m5 12 5 5 9-10" />
   </Icon>
 );
+
+export const ColumnsIcon = ({ count = 2 }: { count?: number }) => (
+  <Icon>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    {Array.from({ length: count - 1 }, (_, i) => {
+      const x = 3 + (18 / count) * (i + 1);
+      return <path key={i} d={`M${x} 4v16`} />;
+    })}
+  </Icon>
+);
+
+export const PaletteIcon = () => (
+  <Icon>
+    <path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z" />
+    <circle cx="7.5" cy="11" r="1" />
+    <circle cx="10" cy="7.5" r="1" />
+    <circle cx="14.5" cy="7.5" r="1" />
+  </Icon>
+);
+
+export const SettingsIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+  </Icon>
+);
+
+export const TextSizeIcon = () => (
+  <Icon>
+    <path d="M3 7V5h11v2M8.5 5v14M6 19h5M14 12v-1h7v1M17.5 11v8M16 19h3" />
+  </Icon>
+);
+
+export const GripIcon = () => (
+  <Icon size={14} fill="currentColor">
+    <g stroke="none">
+      <circle cx="9" cy="6" r="1.6" />
+      <circle cx="15" cy="6" r="1.6" />
+      <circle cx="9" cy="12" r="1.6" />
+      <circle cx="15" cy="12" r="1.6" />
+      <circle cx="9" cy="18" r="1.6" />
+      <circle cx="15" cy="18" r="1.6" />
+    </g>
+  </Icon>
+);
+
+export const EyeIcon = () => (
+  <Icon>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+);

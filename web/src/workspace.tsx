@@ -11,6 +11,8 @@ export type Workspace = {
   /** parent の末尾にページを作成する。open なら作成後に開く。失敗時は null */
   create: (parent: string, init?: Partial<PageRecord>, opts?: { open?: boolean }) => Promise<PageSummary | null>;
   trash: (id: string) => void;
+  /** parent の子の index 番目へ移す（index 省略時は末尾）。兄弟の並び順もまとめて振り直す */
+  move: (id: string, parent: string, index?: number) => void;
 };
 
 export const WorkspaceContext = createContext<Workspace | null>(null);

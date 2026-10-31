@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --sidebar-w: 260px;
   --bg: #ffffff;
   --sidebar-bg: #f7f7f5;
@@ -17,23 +17,24 @@
   --star: #f2b01e;
   --font: "Inter", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif;
   --emoji-font: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-serif: "Lyon-Text", Georgia, "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  --font-mono: "SFMono-Regular", Menlo, Consolas, "BIZ UDGothic", "Noto Sans Mono CJK JP", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #191919;
-    --sidebar-bg: #202020;
-    --popover-bg: #252525;
-    --text: #e6e6e4;
-    --text-muted: #9b9b9b;
-    --hover: rgba(255, 255, 255, 0.055);
-    --active: rgba(255, 255, 255, 0.085);
-    --border: rgba(255, 255, 255, 0.08);
-    --shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 3px 6px rgba(0, 0, 0, 0.3), 0 9px 24px rgba(0, 0, 0, 0.5);
-    --danger: #ff6b6b;
-    --warn: #f0a050;
-    --ok: #6fbf8e;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #191919;
+  --sidebar-bg: #202020;
+  --popover-bg: #252525;
+  --text: #e6e6e4;
+  --text-muted: #9b9b9b;
+  --hover: rgba(255, 255, 255, 0.055);
+  --active: rgba(255, 255, 255, 0.085);
+  --border: rgba(255, 255, 255, 0.08);
+  --shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 3px 6px rgba(0, 0, 0, 0.3), 0 9px 24px rgba(0, 0, 0, 0.5);
+  --danger: #ff6b6b;
+  --warn: #f0a050;
+  --ok: #6fbf8e;
 }
 
 html,
@@ -135,6 +136,11 @@ kbd {
 .sidebar-collapse {
   margin-left: auto;
   opacity: 0;
+}
+
+/* ピーク表示中は「固定」ボタンとして右向きにする */
+.sidebar-collapse.pin svg {
+  transform: rotate(180deg);
 }
 
 .sidebar:hover .sidebar-collapse,
@@ -607,6 +613,38 @@ section:hover > .sidebar-section .icon-btn,
 .breadcrumb-sep {
   color: var(--text-muted);
   opacity: 0.6;
+}
+
+.breadcrumb-more {
+  flex-shrink: 0;
+}
+
+.breadcrumb-ellipsis {
+  border: none;
+  background: none;
+  font: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.breadcrumb-ellipsis[aria-expanded="true"] {
+  background: var(--hover);
+}
+
+.breadcrumb-menu {
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.breadcrumb-menu .menu-item {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.breadcrumb-menu .menu-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-actions {
@@ -1262,8 +1300,39 @@ section:hover > .sidebar-section .icon-btn,
   background: var(--hover);
 }
 
+/* 表全体（表・空の表示・「新規」）を 1 つの角丸の枠に収める */
+.db-table-frame {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .db-table-wrap {
   overflow-x: auto;
+}
+
+/* 枠の線と重ならないよう、表の最下段の線は消す */
+.db-table tbody tr:last-child .db-td {
+  border-bottom: none;
+}
+
+.db-table thead {
+  background: var(--sidebar-bg);
+}
+
+.db-table-frame .db-empty {
+  margin: 0;
+  padding: 16px 12px;
+}
+
+.db-table-frame .db-add-row {
+  border-bottom: none;
+}
+
+/* 行があるときは、最下段と「新規」の間に区切り線を引く */
+.db-table-frame .db-table-wrap + .db-add-row {
+  border-top: 1px solid var(--border);
 }
 
 .db-table {
@@ -1279,6 +1348,12 @@ section:hover > .sidebar-section .icon-btn,
   border: 1px solid var(--border);
   border-top: none;
   text-align: left;
+  vertical-align: middle;
+}
+
+/* 本文に埋め込んだときに BlockNote の「.ProseMirror td { vertical-align: top }」に負けないよう詳細度を上げる */
+.db-table .db-th,
+.db-table .db-td {
   vertical-align: middle;
 }
 
@@ -1372,7 +1447,7 @@ section:hover > .sidebar-section .icon-btn,
 .cell-input:focus {
   background: var(--popover-bg);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
-  border-radius: 3px;
+  border-radius: 6px;
 }
 
 .cell-input::placeholder,
@@ -1459,6 +1534,12 @@ section:hover > .sidebar-section .icon-btn,
   cursor: pointer;
 }
 
+/* 表のセルではブロックにしてセルの縦中央に置く（行内要素のままだと、本文に埋め込んだときに
+   エディタの行の高さの影響で上にずれる） */
+.db-td-checkbox .db-checkbox {
+  display: block;
+}
+
 .cell-select {
   display: flex;
   align-items: center;
@@ -1490,8 +1571,8 @@ section:hover > .sidebar-section .icon-btn,
 .tag {
   display: inline-block;
   max-width: 220px;
-  padding: 0 6px;
-  border-radius: 4px;
+  padding: 0 8px;
+  border-radius: 6px;
   font-size: 13px;
   line-height: 20px;
   white-space: nowrap;
@@ -1500,28 +1581,41 @@ section:hover > .sidebar-section .icon-btn,
   color: #32302c;
 }
 
-.tag-gray { background: #e3e2e0; }
-.tag-brown { background: #eee0da; }
-.tag-orange { background: #fadec9; }
-.tag-yellow { background: #fdecc8; }
-.tag-green { background: #dbeddb; }
-.tag-blue { background: #d3e5ef; }
-.tag-purple { background: #e8deee; }
-.tag-pink { background: #f5e0e9; }
-.tag-red { background: #ffe2dd; }
-
-@media (prefers-color-scheme: dark) {
-  .tag { color: #e6e6e4; }
-  .tag-gray { background: #373737; }
-  .tag-brown { background: #4a3a30; }
-  .tag-orange { background: #5c3b23; }
-  .tag-yellow { background: #564328; }
-  .tag-green { background: #243d30; }
-  .tag-blue { background: #143a4e; }
-  .tag-purple { background: #3c2d49; }
-  .tag-pink { background: #4e2c3c; }
-  .tag-red { background: #522e2a; }
+:root {
+  --tag-gray: #e3e2e0;
+  --tag-brown: #eee0da;
+  --tag-orange: #fadec9;
+  --tag-yellow: #fdecc8;
+  --tag-green: #dbeddb;
+  --tag-blue: #d3e5ef;
+  --tag-purple: #e8deee;
+  --tag-pink: #f5e0e9;
+  --tag-red: #ffe2dd;
 }
+
+:root[data-theme="dark"] {
+  --tag-gray: #373737;
+  --tag-brown: #4a3a30;
+  --tag-orange: #5c3b23;
+  --tag-yellow: #564328;
+  --tag-green: #243d30;
+  --tag-blue: #143a4e;
+  --tag-purple: #3c2d49;
+  --tag-pink: #4e2c3c;
+  --tag-red: #522e2a;
+}
+
+.tag-gray { background: var(--tag-gray); }
+.tag-brown { background: var(--tag-brown); }
+.tag-orange { background: var(--tag-orange); }
+.tag-yellow { background: var(--tag-yellow); }
+.tag-green { background: var(--tag-green); }
+.tag-blue { background: var(--tag-blue); }
+.tag-purple { background: var(--tag-purple); }
+.tag-pink { background: var(--tag-pink); }
+.tag-red { background: var(--tag-red); }
+
+:root[data-theme="dark"] .tag { color: #e6e6e4; }
 
 .menu-input {
   box-sizing: border-box;
@@ -1635,14 +1729,10 @@ section:hover > .sidebar-section .icon-btn,
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 6px;
-  border-radius: 8px;
+  padding: 8px;
+  border-radius: 12px;
   background: var(--sidebar-bg);
   transition: background 0.1s;
-}
-
-.db-lane.drop {
-  background: color-mix(in srgb, var(--accent) 12%, var(--sidebar-bg));
 }
 
 .db-lane-head {
@@ -1666,8 +1756,8 @@ section:hover > .sidebar-section .icon-btn,
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
   background: var(--bg);
   box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgba(15, 15, 15, 0.08);
   color: var(--text);
@@ -1699,7 +1789,7 @@ section:hover > .sidebar-section .icon-btn,
 
 .db-lane .db-add-row {
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* 行ページのプロパティ欄 */
@@ -1747,21 +1837,454 @@ section:hover > .sidebar-section .icon-btn,
   margin-left: 8px;
 }
 
+/* ---------- Columns (段組み) ---------- */
+
+.rs-column-list {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.rs-column {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px 16px;
+}
+
+.rs-column:first-child {
+  padding-left: 0;
+}
+
+.rs-column:last-child {
+  padding-right: 0;
+}
+
+.rs-column-slot {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* 表や画像がはみ出す場合は列の中でスクロールさせる */
+  overflow-x: auto;
+}
+
+.rs-column-slot > .bn-trailing-block {
+  height: auto;
+  flex-grow: 1;
+}
+
+/* 列の境界のつまみ。ホバー時だけ縦線を出す */
+.rs-column-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -5px;
+  z-index: 2;
+  width: 10px;
+  cursor: col-resize;
+}
+
+.rs-column:last-child > .rs-column-resize,
+.bn-editor[contenteditable="false"] .rs-column-resize {
+  display: none;
+}
+
+.rs-column-resize::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s ease 0.1s;
+}
+
+.rs-column-resize:hover::after,
+.rs-resizing .rs-column-resize:hover::after {
+  opacity: 0.6;
+}
+
+body.rs-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.rs-resizing * {
+  cursor: col-resize !important;
+}
+
+/* ---------- Page style: font / small text ---------- */
+
+.page-wrap {
+  --page-font: var(--font);
+}
+
+.page-wrap.font-serif {
+  --page-font: var(--font-serif);
+}
+
+.page-wrap.font-mono {
+  --page-font: var(--font-mono);
+}
+
+.page-wrap .page-title,
+.page-wrap .db,
+.page-wrap .bn-default-styles {
+  font-family: var(--page-font);
+}
+
+/* BlockNote の本文の配色をアプリの --bg / --text に合わせる（詳細度を上げて既定の配色より優先） */
+.page-wrap .bn-root.bn-root {
+  --bn-colors-editor-text: var(--text);
+  --bn-colors-editor-background: var(--bg);
+}
+
+/* 文字・ブロックの背景色を角丸にする。行をまたいだときも各行の端を丸める */
+.page-wrap [data-style-type="backgroundColor"] {
+  padding: 1px 4px;
+  border-radius: 5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.page-wrap .bn-block:has(> .bn-block-content[data-background-color]),
+.page-wrap .bn-block-content[data-background-color] {
+  border-radius: 8px;
+}
+
+.page-wrap .bn-block-content[data-background-color] {
+  padding-inline: 8px;
+}
+
+.page-wrap.small-text .bn-default-styles {
+  font-size: 14px;
+}
+
+.page-wrap.small-text .page-title {
+  font-size: 34px;
+}
+
+.page-wrap.small-text .db-table,
+.page-wrap.small-text .cell-input,
+.page-wrap.small-text .db-card {
+  font-size: 13px;
+}
+
+.page-menu {
+  min-width: 260px;
+}
+
+.font-chooser {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 2px 4px 6px;
+}
+
+.font-chooser button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.font-chooser button:hover {
+  background: var(--hover);
+}
+
+.font-sample {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.font-chooser button.on .font-sample {
+  color: var(--accent);
+}
+
+.font-sample.font-default {
+  font-family: var(--font);
+}
+
+.font-sample.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-sample.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.font-chooser button.on .font-label {
+  color: var(--text);
+}
+
+button.switch {
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---------- Cover reposition ---------- */
+
+.page-cover.repositioning {
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.cover-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* ---------- Sidebar resize ---------- */
+
+.sidebar {
+  position: relative;
+}
+
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  z-index: 5;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sidebar-resizer:hover,
+body.rs-resizing .sidebar-resizer {
+  box-shadow: inset -2px 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* ---------- Settings dialog ---------- */
+
+.settings {
+  padding: 4px 20px 16px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.settings-head h2 {
+  margin: 16px 0 2px;
+  font-size: 18px;
+}
+
+.settings-head p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.settings-subhead {
+  margin: 20px 0 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.settings-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-value {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings .font-chooser {
+  width: 220px;
+  padding: 0;
+}
+
+.btn-secondary.small {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+
+.theme-chooser {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-chooser button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.theme-chooser button.on {
+  color: var(--text);
+}
+
+.theme-preview {
+  display: flex;
+  width: 64px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.theme-chooser button.on .theme-preview {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.theme-preview span:first-child {
+  width: 30%;
+}
+
+.theme-preview span:last-child {
+  flex: 1;
+}
+
+.theme-preview-light span:first-child { background: #f7f7f5; }
+.theme-preview-light span:last-child { background: #ffffff; }
+.theme-preview-dark span:first-child { background: #202020; }
+.theme-preview-dark span:last-child { background: #191919; }
+.theme-preview-system span:first-child { background: linear-gradient(135deg, #f7f7f5 50%, #202020 50%); }
+.theme-preview-system span:last-child { background: linear-gradient(135deg, #ffffff 50%, #191919 50%); }
+
+.accent-chooser {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.accent-chooser button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.accent-chooser button.on {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor;
+  color: var(--text);
+}
+
 /* ---------- Desktop: collapsed sidebar ---------- */
 
+.sidebar-hotzone {
+  display: none;
+}
+
 @media (min-width: 769px) {
+  .layout.sidebar-collapsed .menu-btn {
+    display: inline-grid;
+  }
+
+  /*
+   * 折りたたみ中のサイドバーは、本文の上に浮かせたまま画面左の外へ退避させておき、
+   * ピーク表示のときに横から滑り込ませる（閉じるときも同じ動きで左へ戻る）。
+   * visibility は閉じる動きが終わってから切り替え、隠れている間は操作もフォーカスもできないようにする。
+   */
   .layout.sidebar-collapsed .sidebar {
+    position: fixed;
+    top: 48px;
+    bottom: 12px;
+    left: 0;
+    z-index: 25;
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    box-shadow: var(--shadow);
+    transform: translateX(calc(-100% - 24px));
+    visibility: hidden;
+    transition:
+      transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0s linear 0.22s;
+  }
+
+  /* ピーク表示 */
+  .layout.sidebar-collapsed.sidebar-peek .sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .layout.sidebar-peek .sidebar-resizer {
     display: none;
   }
 
-  .layout.sidebar-collapsed .menu-btn {
-    display: inline-grid;
+  .layout.sidebar-peek .sidebar-collapse {
+    opacity: 1;
+  }
+
+  /* 画面左端のマウスオーバー領域 */
+  .sidebar-hotzone {
+    display: block;
+    position: fixed;
+    top: 44px;
+    bottom: 0;
+    left: 0;
+    z-index: 24;
+    width: 12px;
   }
 }
 
 /* ---------- Touch devices ---------- */
 
 @media (hover: none) {
+  .sidebar-hotzone {
+    display: none !important;
+  }
+
   .sidebar-collapse,
   .sidebar-section .icon-btn,
   .page-controls,
@@ -1815,12 +2338,6 @@ section:hover > .sidebar-section .icon-btn,
     display: inline-grid;
   }
 
-  /* 狭い画面では現在のページ名だけを表示する */
-  .breadcrumb-item:not(.current),
-  .breadcrumb-sep {
-    display: none;
-  }
-
   .page-head {
     padding-top: 24px;
   }
@@ -1852,10 +2369,31 @@ section:hover > .sidebar-section .icon-btn,
   .modal-backdrop {
     padding-top: 8vh;
   }
+
+  /* 狭い画面では段組みを縦に積む */
+  .rs-column-list {
+    flex-direction: column;
+  }
+
+  .rs-column {
+    padding: 0;
+  }
+
+  .rs-column-resize,
+  .sidebar-resizer {
+    display: none;
+  }
+
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar,
+  .layout.sidebar-collapsed .sidebar,
+  .layout.sidebar-collapsed.sidebar-peek .sidebar,
   .chevron,
   .skeleton,
   .spinner,
@@ -1864,4 +2402,414 @@ section:hover > .sidebar-section .icon-btn,
     animation: none;
     transition: none;
   }
+}
+
+/* ---------- Inline database（本文に埋め込んだデータベース） ---------- */
+
+.inline-db-frame {
+  width: 100%;
+  margin: 6px 0;
+  cursor: auto;
+  user-select: text;
+}
+
+.inline-db .db {
+  padding: 0;
+}
+
+.inline-db-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.inline-db-title {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.inline-db-title::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.inline-db-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.inline-db:hover .inline-db-open,
+.inline-db-open:focus-visible {
+  opacity: 1;
+}
+
+.inline-db-open:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.inline-db-missing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+@media (hover: none) {
+  .inline-db-open {
+    opacity: 1;
+  }
+}
+
+/* ---------- Database: 選択肢の削除・行とカードの並べ替え ---------- */
+
+.db-select-option {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.db-select-option .menu-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-select-option .icon-btn {
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.db-select-option:hover .icon-btn,
+.db-select-option .icon-btn:focus-visible {
+  opacity: 1;
+}
+
+.db-title-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.db-title-wrap .db-title-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-row-handle {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 24px;
+  margin-left: 2px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: grab;
+  opacity: 0;
+}
+
+.db-table tr:hover .db-row-handle {
+  opacity: 1;
+}
+
+.db-row-handle:hover {
+  background: var(--hover);
+}
+
+.db-row-handle + .db-title-cell {
+  padding-left: 0;
+}
+
+.db-table tr.dragging {
+  opacity: 0.4;
+}
+
+/* ドロップ位置を示す線 */
+.db-table tr.drop-before > .db-td {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.db-table tr.drop-after > .db-td {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.db-card {
+  position: relative;
+}
+
+.db-card.drop-before::before,
+.db-card.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.db-card.drop-before::before {
+  top: -5px;
+}
+
+.db-card.drop-after::after {
+  bottom: -5px;
+}
+
+@media (hover: none) {
+  .db-row-handle,
+  .db-select-option .icon-btn {
+    opacity: 1;
+  }
+}
+
+/* ---------- Database: 選択肢の色 ---------- */
+
+/* ドラッグ中のレーンは背景色を変えず、枠で示す（レーンの色が分かるように） */
+.db-lane.drop {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.color-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px rgba(15, 15, 15, 0.08);
+}
+
+.db-option-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.db-option-back {
+  align-self: flex-start;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.db-option-back:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ---------- Database: ボードの配色 ---------- */
+
+/*
+ * レーンもカードも選択肢の色（--lane-ink）で染める。
+ * レーンは背景にしっかり混ぜ、カードはそれより明るい（ライトでは白に近い）同系色にして浮かせる。
+ */
+:root {
+  --ink-gray: #8a8986;
+  --ink-brown: #a5735c;
+  --ink-orange: #e8832a;
+  --ink-yellow: #e3a52d;
+  --ink-green: #3f9b68;
+  --ink-blue: #2f8fdc;
+  --ink-purple: #9b6bd0;
+  --ink-pink: #d65a9e;
+  --ink-red: #e25a54;
+  --lane-base: #ffffff;
+  --lane-mix: 20%;
+  --card-base: #ffffff;
+  --card-mix: 5%;
+  --card-hover-mix: 9%;
+  --card-line: 28%;
+  --card-shadow: 0 1px 2px rgba(15, 15, 15, 0.06);
+  --card-shadow-hover: 0 4px 12px rgba(15, 15, 15, 0.1);
+  --lane-text-mix: 80%;
+  --lane-tag-mix: 30%;
+  --card-prop-text: color-mix(in srgb, var(--lane-ink) 40%, var(--text-muted));
+  --lane-tag-text: color-mix(in srgb, var(--lane-ink) 60%, #000);
+}
+
+:root[data-theme="dark"] {
+  --ink-gray: #a3a3a3;
+  --ink-brown: #c8906f;
+  --ink-orange: #f0883e;
+  --ink-yellow: #e8b84a;
+  --ink-green: #4cc07f;
+  --ink-blue: #4a9ff0;
+  --ink-purple: #ad7ff0;
+  --ink-pink: #ec6cb0;
+  --ink-red: #f26a64;
+  --lane-base: #1e1e1e;
+  --lane-mix: 40%;
+  --card-base: #4a4a4a;
+  --card-mix: 32%;
+  --card-hover-mix: 40%;
+  --card-line: 45%;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --lane-text-mix: 70%;
+  --lane-tag-mix: 70%;
+  --card-prop-text: color-mix(in srgb, var(--lane-ink) 30%, #d4d4d4);
+  --lane-tag-text: #fff;
+}
+
+.db-lane.lane-gray { --lane-ink: var(--ink-gray); }
+.db-lane.lane-brown { --lane-ink: var(--ink-brown); }
+.db-lane.lane-orange { --lane-ink: var(--ink-orange); }
+.db-lane.lane-yellow { --lane-ink: var(--ink-yellow); }
+.db-lane.lane-green { --lane-ink: var(--ink-green); }
+.db-lane.lane-blue { --lane-ink: var(--ink-blue); }
+.db-lane.lane-purple { --lane-ink: var(--ink-purple); }
+.db-lane.lane-pink { --lane-ink: var(--ink-pink); }
+.db-lane.lane-red { --lane-ink: var(--ink-red); }
+
+.db-lane {
+  --lane-ink: var(--ink-gray);
+  background: color-mix(in srgb, var(--lane-ink) var(--lane-mix), var(--lane-base));
+}
+
+/* 件数・「新規」はレーンの色で。ダークでは白寄りにして明るく見せる */
+.db-lane .db-lane-count,
+.db-lane .db-add-row,
+.db-lane .db-lane-none {
+  color: color-mix(in srgb, var(--lane-ink) var(--lane-text-mix), var(--text));
+}
+
+.db-lane .db-lane-count {
+  font-weight: 600;
+}
+
+/* レーン見出しの選択肢名は、レーンより濃い同系色のバッジにする */
+.db-lane-head .tag {
+  background: color-mix(in srgb, var(--lane-ink) var(--lane-tag-mix), var(--lane-base));
+  color: var(--lane-tag-text);
+  font-weight: 500;
+}
+
+.db-lane .db-add-row:hover {
+  background: color-mix(in srgb, var(--lane-ink) 18%, transparent);
+}
+
+.db-card {
+  background: color-mix(in srgb, var(--lane-ink) var(--card-mix), var(--card-base));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lane-ink) var(--card-line), transparent),
+    var(--card-shadow);
+  transition: box-shadow 0.12s, background 0.12s;
+}
+
+.db-card:hover {
+  background: color-mix(in srgb, var(--lane-ink) var(--card-hover-mix), var(--card-base));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--lane-ink) calc(var(--card-line) + 15%), transparent),
+    var(--card-shadow-hover);
+}
+
+/* カード内の補助テキスト（日付・数値など）もレーンの色に寄せる */
+.db-card .db-card-prop {
+  color: var(--card-prop-text);
+}
+
+/* ボード上部のバー（グループ化・カードのプロパティ） */
+.db-board-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 8px;
+}
+
+.db-board-bar .db-groupby {
+  margin: 0;
+}
+
+.db-board-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.db-board-btn:not(:disabled):hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.db-board-btn-count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--hover);
+  font-size: 12px;
+}
+
+.db-card-props-menu {
+  min-width: 240px;
+}
+
+.db-card-props-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.db-card-props-row:hover {
+  background: var(--hover);
+}
+
+.db-card-props-row .menu-item-label {
+  color: var(--text);
+}
+
+.db-card-props-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.db-card-props-actions button {
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.db-card-props-actions button:hover {
+  background: var(--hover);
+  color: var(--text);
 }

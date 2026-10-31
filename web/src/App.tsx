@@ -1,20 +1,26 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { pages, SUMMARY_FIELDS, type PageRecord, type PageSummary, type SaveStatus } from "./pb";
 import { buildTree } from "./tree";
 import { PageEditor } from "./PageEditor";
 import { Sidebar, type DropPos } from "./Sidebar";
 import { MoveDialog } from "./MoveDialog";
-import { WorkspaceContext, handleLinkClick, pageHref, type Workspace } from "./workspace";
+import { Breadcrumb } from "./Breadcrumb";
+import { FontChooser, SettingsDialog } from "./SettingsDialog";
+import { useSettings } from "./settings";
+import { WorkspaceContext, type Workspace } from "./workspace";
 import { SearchDialog } from "./SearchDialog";
 import { TrashDialog } from "./TrashDialog";
-import { Dropdown, MenuItem, PageGlyph, copyText, formatDate, pageLabel } from "./ui";
-import { CopyIcon, LinkIcon, MenuIcon, MoreIcon, MoveIcon, PlusIcon, StarIcon, TrashIcon, WidthIcon } from "./icons";
+import { Dropdown, MenuItem, copyText, formatDate, pageLabel } from "./ui";
+import { CopyIcon, LinkIcon, MenuIcon, MoreIcon, MoveIcon, PlusIcon, StarIcon, TextSizeIcon, TrashIcon, WidthIcon } from "./icons";
 
 // ルーティングライブラリは使わず、?id=<pageId> でページを指定する。
 // 遷移は history.pushState で行い、バンドルを再読み込みしない。
 const readId = () => new URLSearchParams(window.location.search).get("id");
 
 const MOBILE_QUERY = "(max-width: 768px)";
+// サイドバーのホバー表示（ピーク）はマウスのある PC 幅だけ
+const PEEK_QUERY = window.matchMedia("(hover: hover) and (min-width: 769px)");
+const PEEK_CLOSE_DELAY_MS = 300;
 
 // サイドバーの開閉状態は端末ごとの好みなので localStorage に置く（使えない環境では既定値で動く）
 function loadPref<T>(key: string, fallback: T): T {
@@ -44,7 +50,8 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false); // モバイルのオーバーレイ
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => loadPref("rs.sidebarCollapsed", false));
   const [expanded, setExpanded] = useState(() => new Set(loadPref<string[]>("rs.expanded", [])));
-  const [dialog, setDialog] = useState<"search" | "trash" | "move" | null>(null);
+  const [dialog, setDialog] = useState<"search" | "trash" | "move" | "settings" | null>(null);
+  const settings = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
 
@@ -76,6 +83,23 @@ export function App() {
   }, [current]);
 
   useEffect(() => savePref("rs.sidebarCollapsed", sidebarCollapsed), [sidebarCollapsed]);
+
+  // 折りたたみ中のサイドバーを、☰ ボタンや画面左端へのマウスオーバーで一時的に重ねて表示する（Notion のピーク表示）
+  const [peek, setPeek] = useState(false);
+  const peekTimer = useRef<number | undefined>(undefined);
+  const openPeek = useCallback(() => {
+    window.clearTimeout(peekTimer.current);
+    if (sidebarCollapsed && PEEK_QUERY.matches) setPeek(true);
+  }, [sidebarCollapsed]);
+  // ボタンからサイドバーへマウスを移す間に閉じないよう、少し待ってから閉じる
+  const closePeek = useCallback(() => {
+    window.clearTimeout(peekTimer.current);
+    peekTimer.current = window.setTimeout(() => setPeek(false), PEEK_CLOSE_DELAY_MS);
+  }, []);
+  useEffect(() => {
+    if (!sidebarCollapsed || dialog) setPeek(false);
+  }, [sidebarCollapsed, dialog]);
+  useEffect(() => () => window.clearTimeout(peekTimer.current), []);
   useEffect(() => savePref("rs.expanded", [...expanded]), [expanded]);
 
   // 開いているページの祖先をサイドバーで展開しておく
@@ -103,16 +127,28 @@ export function App() {
     setList((l) => l?.map((p) => (p.id === id ? { ...p, ...patch } : p)) ?? l);
   }, []);
 
+  // ページごとの保存待ちの列。PocketBase はレコード全体を読んで書き戻すので、同じページへの更新を
+  // 同時に送ると後から終わった方が他方の変更を古い値で上書きしてしまう（例: ボードでレーンと並び順を同時に変える）
+  const saveQueue = useRef(new Map<string, Promise<unknown>>());
+
   /** 楽観的に表示を更新してから保存する。失敗したら一覧を取り直して整合させる */
   const updatePage = useCallback(
     async (id: string, patch: Partial<PageSummary>) => {
       patchLocal(id, patch);
+      const queue = saveQueue.current;
+      // 同じ URL への連続したリクエストを SDK が自動キャンセルしないよう requestKey: null にする
+      const run = (queue.get(id) ?? Promise.resolve())
+        .catch(() => {})
+        .then(() => pages().update(id, patch, { fields: "updated", requestKey: null }));
+      queue.set(id, run);
       try {
-        const rec = await pages().update(id, patch, { fields: "updated" });
+        const rec = await run;
         patchLocal(id, { updated: rec.updated });
       } catch (err) {
         setToast({ message: `保存に失敗しました: ${err}` });
         reloadList();
+      } finally {
+        if (queue.get(id) === run) queue.delete(id);
       }
     },
     [patchLocal, reloadList],
@@ -124,7 +160,10 @@ export function App() {
     try {
       const siblings = tree.children.get(parent) ?? [];
       const sort = Math.max(0, ...siblings.map((p) => p.sort || 0)) + 1;
-      const rec = await pages().create({ title: "", content: [], parent, sort, ...init }, { fields: SUMMARY_FIELDS });
+      const rec = await pages().create(
+        { title: "", content: [], parent, sort, ...settings.newPage, ...init },
+        { fields: SUMMARY_FIELDS },
+      );
       setList((l) => [...(l ?? []), rec]);
       if (parent) setExpanded((s) => new Set(s).add(parent));
       if (open) navigate(rec.id);
@@ -175,6 +214,9 @@ export function App() {
           cover: src.cover,
           parent: src.parent,
           fullWidth: src.fullWidth,
+          font: src.font,
+          smallText: src.smallText,
+          coverY: src.coverY,
           database: src.database, // 列定義のみ複製し、行は複製しない
           props: src.props,
           sort: src.sort, // 同じ sort なら作成順で並ぶので、元のページの直後に来る
@@ -264,12 +306,17 @@ export function App() {
   }, [toggleSidebar]);
 
   const workspace = useMemo<Workspace>(
-    () => ({ tree, navigate, update: updatePage, create: createPage, trash: trashPage }),
-    // createPage / trashPage は毎回作り直されるが、参照する状態は tree と同じ list から来る
+    () => ({ tree, navigate, update: updatePage, create: createPage, trash: trashPage, move: placePage }),
+    // createPage / trashPage / placePage は毎回作り直されるが、参照する状態は tree と同じ list から来る
     [tree, navigate, updatePage],
   );
 
-  const layoutClass = ["layout", sidebarOpen && "sidebar-open", sidebarCollapsed && "sidebar-collapsed"]
+  const layoutClass = [
+    "layout",
+    sidebarOpen && "sidebar-open",
+    sidebarCollapsed && "sidebar-collapsed",
+    sidebarCollapsed && peek && "sidebar-peek",
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -296,32 +343,31 @@ export function App() {
             setSidebarOpen(false);
             setDialog("trash");
           }}
+          onOpenSettings={() => {
+            setSidebarOpen(false);
+            setDialog("settings");
+          }}
           onCollapse={toggleSidebar}
+          peek={sidebarCollapsed && peek}
+          onMouseEnter={openPeek}
+          onMouseLeave={closePeek}
         />
         <div className="backdrop" onClick={() => setSidebarOpen(false)} />
+        {sidebarCollapsed && <div className="sidebar-hotzone" onMouseEnter={openPeek} onMouseLeave={closePeek} />}
 
         <main className="main">
           <header className="topbar">
-            <button className="icon-btn menu-btn" title="サイドバーを開く (Ctrl+\)" onClick={toggleSidebar}>
+            <button
+              className="icon-btn menu-btn"
+              title="サイドバーを開く (Ctrl+\)"
+              onClick={toggleSidebar}
+              onMouseEnter={openPeek}
+              onMouseLeave={closePeek}
+            >
               <MenuIcon />
             </button>
 
-            <nav className="breadcrumb" aria-label="パンくずリスト">
-              {current &&
-                [...tree.ancestors(current.id), current].map((p, i, arr) => (
-                  <Fragment key={p.id}>
-                    {i > 0 && <span className="breadcrumb-sep">/</span>}
-                    <a
-                      href={pageHref(p.id)}
-                      className={`breadcrumb-item${i === arr.length - 1 ? " current" : ""}`}
-                      onClick={(e) => handleLinkClick(e, () => navigate(p.id))}
-                    >
-                      <PageGlyph icon={p.icon} database={!!p.database} />
-                      <span>{pageLabel(p)}</span>
-                    </a>
-                  </Fragment>
-                ))}
-            </nav>
+            {current && <Breadcrumb path={[...tree.ancestors(current.id), current]} onNavigate={navigate} />}
 
             {current && (
               <div className="topbar-actions">
@@ -344,16 +390,30 @@ export function App() {
                     </button>
                   }
                 >
-                  <div className="menu">
-                    {/* データベースは常に全幅で表示する */}
-                    {!current.database && (
-                      <MenuItem
-                        icon={<WidthIcon />}
-                        onClick={() => void updatePage(current.id, { fullWidth: !current.fullWidth })}
-                        right={<span className={`switch${current.fullWidth ? " on" : ""}`} />}
-                      >
-                        全幅表示
-                      </MenuItem>
+                  <div className="menu page-menu">
+                    {!trashedRoot && (
+                      <>
+                        <div className="menu-label">スタイル</div>
+                        <FontChooser value={current.font || ""} onChange={(font) => void updatePage(current.id, { font })} />
+                        <MenuItem
+                          icon={<TextSizeIcon />}
+                          onClick={() => void updatePage(current.id, { smallText: !current.smallText })}
+                          right={<span className={`switch${current.smallText ? " on" : ""}`} />}
+                        >
+                          小さい文字
+                        </MenuItem>
+                        {/* データベースは常に全幅で表示する */}
+                        {!current.database && (
+                          <MenuItem
+                            icon={<WidthIcon />}
+                            onClick={() => void updatePage(current.id, { fullWidth: !current.fullWidth })}
+                            right={<span className={`switch${current.fullWidth ? " on" : ""}`} />}
+                          >
+                            全幅表示
+                          </MenuItem>
+                        )}
+                        <div className="menu-sep" />
+                      </>
                     )}
                     <MenuItem icon={<LinkIcon />} onClick={() => void copyLink(current.id)}>
                       リンクをコピー
@@ -429,7 +489,8 @@ export function App() {
         </main>
 
         {dialog === "search" && <SearchDialog tree={tree} onSelect={navigate} onClose={closeDialog} />}
-        {dialog === "move" && current && (
+        {dialog === "settings" && <SettingsDialog onClose={closeDialog} />}
+      {dialog === "move" && current && (
           <MoveDialog tree={tree} page={current} onMove={(parent) => placePage(current.id, parent)} onClose={closeDialog} />
         )}
         {dialog === "trash" && (

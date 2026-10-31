@@ -61,9 +61,11 @@ export const randomCover = () => {
   return keys[Math.floor(Math.random() * keys.length)];
 };
 
-/** プリセットはそのまま背景に、それ以外はアップロード画像の URL として扱う */
-export const coverStyle = (cover: string): CSSProperties =>
-  COVERS[cover] ? { background: COVERS[cover] } : { backgroundImage: `url("${encodeURI(cover)}")` };
+/** プリセットはそのまま背景に、それ以外はアップロード画像の URL として扱う。y は画像の縦位置（%） */
+export const coverStyle = (cover: string, y = 50): CSSProperties =>
+  COVERS[cover]
+    ? { background: COVERS[cover] }
+    : { backgroundImage: `url("${encodeURI(cover)}")`, backgroundPosition: `center ${y}%` };
 
 export function CoverPicker(props: { onPick: (cover: string) => void; onUpload: (file: File) => Promise<void> }) {
   const fileRef = useRef<HTMLInputElement>(null);

@@ -1,3 +1,4 @@
+import { useMemo, type ReactNode } from "react";
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from "@blocknote/core";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu, SuggestionMenu } from "@blocknote/core/extensions";
 import {
@@ -6,10 +7,11 @@ import {
   getDefaultReactSlashMenuItems,
   type DefaultReactSuggestionItem,
 } from "@blocknote/react";
-import { newDatabaseConfig } from "./database";
-import { LinkIcon, PageIcon, TableIcon } from "./icons";
+import { InlineDatabase, newDatabaseConfig } from "./database";
+import { ColumnBlock, ColumnListBlock, columnListBlock, enclosingColumnList } from "./columns";
+import { ColumnsIcon, LinkIcon, PageIcon, TableIcon } from "./icons";
 import { PageGlyph, pageLabel } from "./ui";
-import { handleLinkClick, pageHref, useWorkspace, type Workspace } from "./workspace";
+import { handleLinkClick, pageHref, useWorkspace, WorkspaceContext, type Workspace } from "./workspace";
 
 /** ページ ID からリンクの表示内容を決める。一覧から引くので、タイトル変更が即座に反映される */
 function usePageRef(pageId: string) {
@@ -42,6 +44,47 @@ const PageLinkBlock = createReactBlockSpec(
   },
 );
 
+/**
+ * 本文に埋め込むデータベース。中身は pageId のデータベースページを表示する。
+ * selectable: false にすると、ブロック内のクリック・入力・ドラッグをエディタが横取りせず、表やボードの操作がそのまま効く
+ */
+const DatabaseBlock = createReactBlockSpec(
+  { type: "database", propSchema: { pageId: { default: "" } }, content: "none" },
+  {
+    meta: { selectable: false },
+    render: ({ block, editor }) => (
+      <div className="inline-db-frame" contentEditable={false}>
+        <DeferredNavigation>
+          <InlineDatabase pageId={block.props.pageId} readOnly={!editor.isEditable} />
+        </DeferredNavigation>
+      </div>
+    ),
+  },
+);
+
+const NAVIGATE_DELAY_MS = 30;
+
+/**
+ * 選択できないブロック内でクリックすると、BlockNote が少し後（10ms）にエディタの blur を呼ぶ。
+ * その前にページを移ってエディタが破棄されるとエラーになるので、ブロック内からの遷移は一拍おいて行う。
+ */
+function DeferredNavigation({ children }: { children: ReactNode }) {
+  const ws = useWorkspace();
+  const value = useMemo<Workspace>(() => {
+    const later = (id: string) => window.setTimeout(() => ws.navigate(id), NAVIGATE_DELAY_MS);
+    return {
+      ...ws,
+      navigate: later,
+      create: async (parent, init, opts) => {
+        const rec = await ws.create(parent, init, { ...opts, open: false });
+        if (rec && (opts?.open ?? true)) later(rec.id);
+        return rec;
+      },
+    };
+  }, [ws]);
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+}
+
 /** 文中の @ メンション */
 const PageMention = createReactInlineContentSpec(
   { type: "pageMention", propSchema: { pageId: { default: "" } }, content: "none" },
@@ -64,7 +107,13 @@ const PageMention = createReactInlineContentSpec(
 );
 
 export const schema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs, pageLink: PageLinkBlock() },
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    pageLink: PageLinkBlock(),
+    database: DatabaseBlock(),
+    columnList: ColumnListBlock,
+    column: ColumnBlock,
+  },
   inlineContentSpecs: { ...defaultInlineContentSpecs, pageMention: PageMention },
 });
 
@@ -82,8 +131,34 @@ export function slashMenuItems(editor: Editor, ws: Workspace, pageId: string): D
     ws.navigate(rec.id);
   };
 
+  // データベースページを作り、このページの本文に埋め込んで表示する（ページは移動しない）
+  const createInlineDatabase = async () => {
+    const rec = await ws.create(pageId, { database: newDatabaseConfig() }, { open: false });
+    if (rec) insertOrUpdateBlockForSlashMenu(editor, { type: "database", props: { pageId: rec.id } });
+  };
+
+  // 段組みの中で使ったときは入れ子にせず、今の段組みの下に新しい段組みを置く
+  const insertColumns = (count: number) => {
+    const outer = enclosingColumnList(editor);
+    const block = outer
+      ? editor.insertBlocks([columnListBlock(count) as EditorBlock], outer, "after")[0]
+      : insertOrUpdateBlockForSlashMenu(editor, columnListBlock(count) as EditorBlock);
+    const first = editor.getBlock(block.id)?.children[0]?.children[0];
+    if (first) editor.setTextCursorPosition(first, "start");
+  };
+
   return [
     ...getDefaultReactSlashMenuItems(editor),
+    ...[2, 3, 4, 5].map(
+      (n): DefaultReactSuggestionItem => ({
+        title: `${n}列`,
+        subtext: `ブロックを ${n} 列に並べる`,
+        aliases: [`${n}`, `${n}れつ`, `${n}retsu`, `columns${n}`, "れつ", "だんぐみ", "段組み", "column"],
+        group: "レイアウト",
+        icon: <ColumnsIcon count={n} />,
+        onItemClick: () => insertColumns(n),
+      }),
+    ),
     {
       title: "ページ",
       subtext: "このページの中にサブページを作成",
@@ -93,9 +168,17 @@ export function slashMenuItems(editor: Editor, ws: Workspace, pageId: string): D
       onItemClick: () => void createLinked({}),
     },
     {
-      title: "データベース",
+      title: "データベース（インライン）",
+      subtext: "このページの中に表・ボードを埋め込む",
+      aliases: ["database", "inline", "table", "db", "でーたべーす", "いんらいん", "テーブル"],
+      group: "ページ・リンク",
+      icon: <TableIcon />,
+      onItemClick: () => void createInlineDatabase(),
+    },
+    {
+      title: "データベース（フルページ）",
       subtext: "表・ボードで管理するサブページを作成",
-      aliases: ["database", "table", "db", "でーたべーす", "テーブル"],
+      aliases: ["database", "fullpage", "db", "でーたべーす", "ふるぺーじ"],
       group: "ページ・リンク",
       icon: <TableIcon />,
       onItemClick: () => void createLinked({ database: newDatabaseConfig() }),
