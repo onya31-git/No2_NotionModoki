@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
-import type { Column, ColumnType, DatabaseConfig, PageSummary, PropValue, SelectOption, SortSpec } from "./pb";
+import type { Column, ColumnType, DatabaseConfig, OpenMode, PageSummary, PropValue, SelectOption, SortSpec } from "./pb";
 import { Dropdown, MenuItem, PageGlyph, pageLabel } from "./ui";
 import { handleLinkClick, pageHref, useWorkspace } from "./workspace";
 import { Switch } from "./SettingsDialog";
+import { useSettings } from "./settings";
 import {
   BoardIcon,
+  CenterPeekIcon,
   CheckboxTypeIcon,
   CheckIcon,
   DateTypeIcon,
   EyeIcon,
+  FullPageIcon,
   LinkIcon,
   MultiSelectTypeIcon,
   NumberTypeIcon,
@@ -18,6 +21,7 @@ import {
   PlusIcon,
   SearchIcon,
   SelectTypeIcon,
+  SidePeekIcon,
   SortIcon,
   TableIcon,
   TextTypeIcon,
@@ -214,6 +218,7 @@ export function DatabaseView({ db, readOnly }: { db: PageSummary; readOnly: bool
               )}
             </span>
           )}
+          <OpenModeMenu value={config.openIn ?? "side"} readOnly={readOnly} onChange={(openIn) => setConfig({ openIn })} />
           <label className="db-search">
             <SearchIcon />
             <input value={query} placeholder="絞り込み" onChange={(e) => setQuery(e.target.value)} />
@@ -365,7 +370,7 @@ function TableView(props: {
             {rows.map((row) => (
               <tr
                 key={row.id}
-                className={`${dragId === row.id ? "dragging" : ""}${dropClass(over, row.id)}`}
+                className={`${dragId === row.id ? "dragging" : ""}${props.ops.ws.peekId === row.id ? " peeked" : ""}${dropClass(over, row.id)}`}
                 onDragOver={(e) => {
                   if (!dragId) return;
                   e.preventDefault();
@@ -447,7 +452,7 @@ function TitleCell({ row, readOnly, autoFocus }: { row: PageSummary; readOnly: b
         autoFocus={autoFocus}
         onCommit={(title) => void ws.update(row.id, { title })}
       />
-      <a className="db-open" href={pageHref(row.id)} onClick={(e) => handleLinkClick(e, () => ws.navigate(row.id))}>
+      <a className="db-open" href={pageHref(row.id)} onClick={(e) => handleLinkClick(e, () => ws.open(row.id))}>
         <OpenIcon />
         開く
       </a>
@@ -691,7 +696,7 @@ function BoardView(props: {
             {lane.rows.map((row) => (
               <a
                 key={row.id}
-                className={`db-card${dragId === row.id ? " dragging" : ""}${canReorder ? dropClass(overCard, row.id) : ""}`}
+                className={`db-card${dragId === row.id ? " dragging" : ""}${ws.peekId === row.id ? " peeked" : ""}${canReorder ? dropClass(overCard, row.id) : ""}`}
                 href={pageHref(row.id)}
                 draggable={!readOnly}
                 onDragOver={(e) => {
@@ -704,7 +709,7 @@ function BoardView(props: {
                   setDragId(row.id);
                 }}
                 onDragEnd={endDrag}
-                onClick={(e) => handleLinkClick(e, () => ws.navigate(row.id))}
+                onClick={(e) => handleLinkClick(e, () => ws.open(row.id))}
               >
                 <span className="db-card-title">
                   <PageGlyph icon={row.icon} />
@@ -733,6 +738,63 @@ function BoardView(props: {
 }
 
 /** ボードのカードに表示するプロパティを選ぶ（Notion の「プロパティの表示」） */
+const OPEN_MODES: { value: OpenMode; label: string; desc: string }[] = [
+  { value: "side", label: "サイドで開く", desc: "表やボードを見ながら横（または下）に表示" },
+  { value: "center", label: "中央で開く", desc: "画面の中央にポップアップで表示" },
+  { value: "full", label: "フルページで開く", desc: "ページ全体を切り替えて表示" },
+];
+
+function OpenModeIcon({ mode }: { mode: OpenMode }) {
+  const { peekPosition } = useSettings();
+  if (mode === "center") return <CenterPeekIcon />;
+  if (mode === "full") return <FullPageIcon />;
+  return <SidePeekIcon bottom={peekPosition === "bottom"} />;
+}
+
+/** 行（ページ）を開く方法の切り替え。設定はデータベースごとに保存する */
+function OpenModeMenu({ value, readOnly, onChange }: { value: OpenMode; readOnly: boolean; onChange: (m: OpenMode) => void }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const current = OPEN_MODES.find((m) => m.value === value) ?? OPEN_MODES[0];
+  return (
+    <Dropdown
+      open={open}
+      onClose={close}
+      align="right"
+      fixed
+      trigger={
+        <button
+          className="db-board-btn db-open-mode"
+          disabled={readOnly}
+          title={`ページの開き方: ${current.label}`}
+          aria-label={`ページの開き方: ${current.label}`}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <OpenModeIcon mode={value} />
+        </button>
+      }
+    >
+      <div className="menu db-open-mode-menu">
+        <div className="menu-label">ページの開き方</div>
+        {OPEN_MODES.map((m) => (
+          <MenuItem
+            key={m.value}
+            icon={<OpenModeIcon mode={m.value} />}
+            right={value === m.value ? <CheckIcon /> : undefined}
+            onClick={() => {
+              onChange(m.value);
+              close();
+            }}
+          >
+            <span className="db-open-mode-label">{m.label}</span>
+            <span className="db-open-mode-desc">{m.desc}</span>
+          </MenuItem>
+        ))}
+      </div>
+    </Dropdown>
+  );
+}
+
 function CardPropertiesMenu(props: {
   columns: Column[];
   hidden: Set<string>;

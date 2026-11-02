@@ -20,7 +20,10 @@ export type DatabaseConfig = {
   groupBy?: string;
   /** ボードのカードに表示しないプロパティの列 ID（新しく追加した列は表示される） */
   cardHidden?: string[];
+  /** 行を開く方法。サイド（既定）・中央のポップアップ・フルページ */
+  openIn?: OpenMode;
 };
+export type OpenMode = "side" | "center" | "full";
 export type PageFont = "" | "serif" | "mono";
 export type PropValue = string | number | boolean | string[] | null;
 

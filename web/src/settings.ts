@@ -4,11 +4,16 @@ import type { PageFont } from "./pb";
 // アプリ全体の見た目の設定。端末ごとの好みなので localStorage に置く（サーバーには保存しない）。
 
 export type ThemePref = "system" | "light" | "dark";
+/** サイド表示（データベースの行のプレビュー）を出す位置。auto は縦長の画面なら下、横長なら右 */
+export type PeekPosition = "auto" | "right" | "bottom";
 
 export type Settings = {
   theme: ThemePref;
   accent: string; // ACCENTS のキー
   sidebarWidth: number;
+  peekPosition: PeekPosition;
+  /** サイド表示が画面に占める割合（右に出すとき・下に出すとき） */
+  peekRatio: { right: number; bottom: number };
   /** 新しく作るページの既定スタイル */
   newPage: { font: PageFont; smallText: boolean; fullWidth: boolean };
 };
@@ -31,6 +36,8 @@ const DEFAULTS: Settings = {
   theme: "system",
   accent: "blue",
   sidebarWidth: SIDEBAR_DEFAULT,
+  peekPosition: "auto",
+  peekRatio: { right: 0.45, bottom: 0.5 },
   newPage: { font: "", smallText: false, fullWidth: false },
 };
 
@@ -41,7 +48,12 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
     const saved = JSON.parse(raw) as Partial<Settings>;
-    return { ...DEFAULTS, ...saved, newPage: { ...DEFAULTS.newPage, ...saved.newPage } };
+    return {
+      ...DEFAULTS,
+      ...saved,
+      newPage: { ...DEFAULTS.newPage, ...saved.newPage },
+      peekRatio: { ...DEFAULTS.peekRatio, ...saved.peekRatio },
+    };
   } catch {
     return DEFAULTS;
   }

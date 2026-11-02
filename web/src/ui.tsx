@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import type { PageSummary } from "./pb";
+import type { PageSummary, SaveStatus } from "./pb";
 import { PageIcon, TableIcon } from "./icons";
 
 export const pageLabel = (p: Pick<PageSummary, "title">) => p.title || "無題";
@@ -138,5 +138,20 @@ export function MenuItem(props: {
       <span className="menu-item-label">{props.children}</span>
       {props.right}
     </button>
+  );
+}
+
+const STATUS_LABEL: Record<SaveStatus, string> = {
+  saved: "保存済み",
+  pending: "未保存",
+  saving: "保存中…",
+  error: "保存に失敗しました",
+};
+
+export function SaveIndicator({ status }: { status: SaveStatus }) {
+  return (
+    <span className={`save-indicator ${status}`} role="status">
+      {STATUS_LABEL[status]}
+    </span>
   );
 }

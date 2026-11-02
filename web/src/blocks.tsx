@@ -11,6 +11,7 @@ import { InlineDatabase, newDatabaseConfig } from "./database";
 import { ColumnBlock, ColumnListBlock, columnListBlock, enclosingColumnList } from "./columns";
 import { ColumnsIcon, LinkIcon, PageIcon, TableIcon } from "./icons";
 import { PageGlyph, pageLabel } from "./ui";
+import { widgetSlashItems, WidgetBlock } from "./widgets";
 import { handleLinkClick, pageHref, useWorkspace, WorkspaceContext, type Workspace } from "./workspace";
 
 /** ページ ID からリンクの表示内容を決める。一覧から引くので、タイトル変更が即座に反映される */
@@ -71,13 +72,14 @@ const NAVIGATE_DELAY_MS = 30;
 function DeferredNavigation({ children }: { children: ReactNode }) {
   const ws = useWorkspace();
   const value = useMemo<Workspace>(() => {
-    const later = (id: string) => window.setTimeout(() => ws.navigate(id), NAVIGATE_DELAY_MS);
+    const later = (fn: () => void) => window.setTimeout(fn, NAVIGATE_DELAY_MS);
     return {
       ...ws,
-      navigate: later,
+      navigate: (id) => later(() => ws.navigate(id)),
+      open: (id, parent) => later(() => ws.open(id, parent)),
       create: async (parent, init, opts) => {
         const rec = await ws.create(parent, init, { ...opts, open: false });
-        if (rec && (opts?.open ?? true)) later(rec.id);
+        if (rec && (opts?.open ?? true)) later(() => ws.open(rec.id, parent));
         return rec;
       },
     };
@@ -111,6 +113,7 @@ export const schema = BlockNoteSchema.create({
     ...defaultBlockSpecs,
     pageLink: PageLinkBlock(),
     database: DatabaseBlock(),
+    widget: WidgetBlock(),
     columnList: ColumnListBlock,
     column: ColumnBlock,
   },
@@ -120,7 +123,7 @@ export const schema = BlockNoteSchema.create({
 export type Editor = typeof schema.BlockNoteEditor;
 export type EditorBlock = typeof schema.PartialBlock;
 
-/** スラッシュメニュー: 既定の項目に「ページ」「データベース」「ページへのリンク」を加える。
+/** スラッシュメニュー: 既定の項目に「ページ」「データベース」「ページへのリンク」「ウィジェット」を加える。
  *  グループ名は項目名と重複させない（BlockNote が両方を React の key に使うため） */
 export function slashMenuItems(editor: Editor, ws: Workspace, pageId: string): DefaultReactSuggestionItem[] {
   // サブページを作ってリンクブロックを置き、そのページを開く（離脱時に本文は即時保存される）
@@ -191,6 +194,7 @@ export function slashMenuItems(editor: Editor, ws: Workspace, pageId: string): D
       icon: <LinkIcon />,
       onItemClick: () => editor.getExtension(SuggestionMenu)?.openSuggestionMenu("@", { ignoreQueryLength: true }),
     },
+    ...widgetSlashItems(editor),
   ];
 }
 

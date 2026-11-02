@@ -8,6 +8,7 @@ import "@blocknote/mantine/style.css";
 import { pages, uploadFile, type PageRecord, type PageSummary, type SaveStatus } from "./pb";
 import { COVERS, CoverPicker, EmojiPicker, coverStyle, randomCover, randomEmoji } from "./pickers";
 import { BlockFormattingToolbar, BlockSideMenu } from "./blockMenu";
+import { blockSelectionExtension } from "./blockSelection";
 import { columnDropCursor } from "./columns";
 import { useResolvedTheme } from "./settings";
 import { Dropdown } from "./ui";
@@ -157,6 +158,8 @@ function Editor(props: BodyProps) {
     dictionary: ja,
     // 画像・動画・ファイルブロックのアップロード先を PocketBase にする
     uploadFile: (file) => uploadFile(file, page.id),
+    // 余白からのドラッグで複数ブロックを選択し、まとめて移動・コピー・削除する
+    extensions: [blockSelectionExtension],
     // ブロックを他のブロックの左右へドラッグしたときに、縦線のドロップ位置を出す（段組みの作成）
     dropCursor: columnDropCursor,
   });

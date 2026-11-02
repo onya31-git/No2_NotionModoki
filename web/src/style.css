@@ -2813,3 +2813,1069 @@ body.rs-resizing .sidebar-resizer {
   background: var(--hover);
   color: var(--text);
 }
+
+/* ---------- 複数ブロックの選択 ---------- */
+
+.rs-block-selected {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* 入れ子のブロックは親の選択色だけで示す（重ねて濃くならないように） */
+.rs-block-selected .rs-block-selected {
+  background: none;
+  box-shadow: none;
+}
+
+.rs-marquee {
+  position: fixed;
+  z-index: 40;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  pointer-events: none;
+}
+
+body.rs-marquee-active,
+body.rs-marquee-active * {
+  user-select: none !important;
+  cursor: default;
+}
+
+.rs-drag-preview {
+  position: absolute;
+  top: -10000px;
+  left: 0;
+  width: 600px;
+}
+
+/* ---------- 文字・ブロックの背景色: 緑を他の色と同じ系統の色合いに ---------- */
+
+/* BlockNote 既定の緑は灰色がかった青緑で、他の色から浮いて見えるので差し替える */
+.bn-root.bn-root.bn-root {
+  --bn-colors-highlights-green-text: #2f8a52;
+  --bn-colors-highlights-green-background: #dcefdf;
+}
+
+.bn-root.bn-root.bn-root[data-color-scheme="dark"] {
+  --bn-colors-highlights-green-text: #4cb874;
+  --bn-colors-highlights-green-background: #2c7a4b;
+}
+
+/* ブロックを選択している間は文字の書式ツールバーを出さない（種類の変更などは ⋮⋮ メニューから） */
+body:has(.rs-block-selected) .bn-formatting-toolbar {
+  display: none;
+}
+
+/* ---------- ウィジェット（時計・カレンダー・天気予報・生涯時計・今日の言葉） ---------- */
+
+.widget-frame {
+  width: 100%;
+  margin: 4px 0;
+  cursor: auto;
+  user-select: text;
+}
+
+.widget {
+  --widget-bg: color-mix(in srgb, var(--text) 3%, var(--bg));
+  position: relative;
+  container-type: inline-size;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--widget-bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+:root[data-theme="dark"] .widget {
+  --widget-bg: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
+
+.widget button {
+  font: inherit;
+  color: inherit;
+}
+
+.widget-gear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted) !important;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.widget:hover .widget-gear,
+.widget-gear:focus-visible {
+  opacity: 1;
+}
+
+.widget-gear:hover {
+  background: var(--hover);
+  color: var(--text) !important;
+}
+
+@media (hover: none) {
+  .widget-gear {
+    opacity: 0.7;
+  }
+}
+
+.widget-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent) !important;
+  font-size: 12px !important;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.widget-link:hover {
+  text-decoration: underline;
+}
+
+.widget-note {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.widget-setup,
+.weather-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  color: var(--text-muted);
+}
+
+/* 設定パネル */
+.widget-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.widget-settings-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.widget-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.widget-field:has(textarea) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.widget-field-label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.widget-field .menu-input {
+  width: auto;
+  margin: 0;
+}
+
+.widget-number {
+  width: 90px !important;
+}
+
+.widget-textarea {
+  width: 100% !important;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.widget-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.widget-segmented,
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--hover);
+}
+
+.widget-segmented button,
+.segmented button {
+  padding: 3px 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted) !important;
+  font-size: 13px !important;
+  cursor: pointer;
+}
+
+.widget-segmented button.on,
+.segmented button.on {
+  background: var(--popover-bg);
+  color: var(--text) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.place-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.place-current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.place-search-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.place-search-row .menu-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.place-results {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-results button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.place-results button:hover {
+  background: var(--hover);
+}
+
+.place-results button.on {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.place-detail {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* 時計 */
+.clock {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.clock-face {
+  flex: none;
+}
+
+.clock-rim {
+  fill: var(--bg);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.clock-tick {
+  stroke: var(--text-muted);
+  stroke-width: 0.8;
+  opacity: 0.5;
+}
+
+.clock-tick.major {
+  stroke: var(--text);
+  stroke-width: 2;
+  opacity: 0.8;
+}
+
+.clock-hand {
+  stroke: var(--text);
+  stroke-linecap: round;
+}
+
+.clock-hand.hour {
+  stroke-width: 4;
+}
+
+.clock-hand.minute {
+  stroke-width: 2.6;
+}
+
+.clock-hand.second {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+
+.clock-pin {
+  fill: var(--accent);
+}
+
+.clock-time {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-digital .clock-time {
+  font-size: 52px;
+}
+
+.clock-sec {
+  margin-left: 2px;
+  color: var(--text-muted);
+  font-size: 0.5em;
+  font-weight: 600;
+}
+
+.clock-date {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+/* カレンダー */
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: -4px 30px 8px 0;
+}
+
+.cal-title {
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.cal-title strong {
+  margin-left: 4px;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.cal-nav {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 18px !important;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cal-nav:hover {
+  background: var(--hover);
+}
+
+.cal-today {
+  font-size: 12px !important;
+  border: 1px solid var(--border);
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-weekday {
+  padding-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.cal-day {
+  display: grid;
+  place-items: center;
+  height: 32px;
+}
+
+.cal-day span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.cal-day.sun,
+.cal-weekday.sun {
+  color: var(--ink-red, var(--danger));
+}
+
+.cal-day.sat,
+.cal-weekday.sat {
+  color: var(--ink-blue, var(--accent));
+}
+
+.cal-day[title] span {
+  background: color-mix(in srgb, var(--ink-red, var(--danger)) 14%, transparent);
+}
+
+.cal-day.other {
+  opacity: 0.35;
+}
+
+.cal-day.today span {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.cal-holidays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 10px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cal-holiday-date {
+  margin-right: 4px;
+  color: var(--ink-red, var(--danger));
+  font-weight: 600;
+}
+
+/* 天気予報: 空模様に合わせて背景をうっすら色づける */
+.widget-weather {
+  --sky: #4a9ff0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--sky) 22%, var(--widget-bg)),
+    color-mix(in srgb, var(--sky) 5%, var(--widget-bg)) 70%
+  );
+}
+
+.widget-weather:has(.sky-clear) { --sky: #f0a83e; }
+.widget-weather:has(.sky-partly) { --sky: #e0b050; }
+.widget-weather:has(.sky-cloud) { --sky: #8f9aa6; }
+.widget-weather:has(.sky-rain) { --sky: #3f88d8; }
+.widget-weather:has(.sky-snow) { --sky: #9ac4ef; }
+.widget-weather:has(.sky-storm) { --sky: #8a6ad8; }
+.widget-weather:has(.sky-night) { --sky: #5560c8; }
+
+.weather-now {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.weather-emoji {
+  font-family: var(--emoji-font);
+  font-size: 54px;
+  line-height: 1;
+}
+
+.weather-place {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.weather-temp {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.weather-unit {
+  margin-left: 2px;
+  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.weather-label {
+  font-weight: 600;
+}
+
+.weather-meta {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 10px;
+  margin: 0 30px 0 auto;
+  font-size: 13px;
+}
+
+.weather-meta dt {
+  color: var(--text-muted);
+}
+
+.weather-meta dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--sky) 25%, var(--border));
+}
+
+.weather-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-dow {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.weather-dow.sun { color: var(--ink-red, var(--danger)); }
+.weather-dow.sat { color: var(--ink-blue, var(--accent)); }
+
+.weather-day-emoji {
+  font-family: var(--emoji-font);
+  font-size: 22px;
+}
+
+.weather-hi {
+  font-weight: 600;
+  color: var(--ink-red, var(--danger));
+}
+
+.weather-lo {
+  color: var(--ink-blue, var(--accent));
+}
+
+.weather-rain {
+  min-height: 1.4em;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.weather-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+@container (max-width: 420px) {
+  .weather-meta {
+    display: none;
+  }
+
+  .weather-day:nth-child(n + 6) {
+    display: none;
+  }
+
+  .weather-days {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .clock {
+    gap: 12px;
+  }
+
+  .clock-face {
+    width: 84px;
+    height: 84px;
+  }
+
+  .clock-time {
+    font-size: 30px;
+  }
+
+  .clock-digital .clock-time {
+    font-size: 40px;
+  }
+}
+
+@container (max-width: 300px) {
+  .weather-emoji {
+    font-size: 40px;
+  }
+
+  .weather-temp {
+    font-size: 30px;
+  }
+
+  .weather-days {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .weather-day:nth-child(n + 5) {
+    display: none;
+  }
+
+  .clock-face {
+    width: 72px;
+    height: 72px;
+  }
+
+  .clock-time {
+    font-size: 26px;
+  }
+}
+
+/* 生涯時計 */
+.life-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.life-dial {
+  flex: none;
+}
+
+.life-track {
+  fill: none;
+  stroke: var(--hover);
+  stroke-width: 8;
+}
+
+:root[data-theme="dark"] .life-track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.life-arc {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.life-hour {
+  fill: var(--text-muted);
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.life-hand {
+  stroke: var(--text);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.life-caption {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.life-time {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.life-sub {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.life-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.life-period {
+  display: grid;
+  grid-template-columns: 3em 1fr 4em;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.life-period-label {
+  color: var(--text-muted);
+}
+
+.life-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--hover);
+}
+
+:root[data-theme="dark"] .life-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.life-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.life-period-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@container (max-width: 340px) {
+  .life-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* 今日の言葉 */
+.quote-widget {
+  margin: 0;
+  padding-right: 24px;
+}
+
+.quote-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.quote-widget blockquote {
+  margin: 8px 0 6px;
+  padding: 0 0 0 14px;
+  border-left: 3px solid var(--accent);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.quote-widget figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---------- サイド表示・中央表示（データベースの行を開いたまま表示） ---------- */
+
+.split {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.split-bottom {
+  flex-direction: column;
+}
+
+.split > .main {
+  min-height: 0;
+}
+
+/* 閉じるとき・開くときに外へはみ出す分を隠す */
+.split {
+  overflow: hidden;
+}
+
+/* 画面の端からすべり出て、閉じるときは端へ戻る */
+.peek-right {
+  animation: peek-in-right 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.peek-bottom {
+  animation: peek-in-bottom 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.peek-right.leaving {
+  animation: peek-out-right 0.2s ease-in forwards;
+}
+
+.peek-bottom.leaving {
+  animation: peek-out-bottom 0.2s ease-in forwards;
+}
+
+.peek-backdrop.leaving {
+  animation: peek-fade-out 0.2s ease-in forwards;
+}
+
+.peek-backdrop.leaving .peek-center {
+  animation: peek-pop-out 0.2s ease-in forwards;
+}
+
+.peek.leaving {
+  pointer-events: none;
+}
+
+@keyframes peek-in-right {
+  from { transform: translateX(100%); }
+}
+
+@keyframes peek-in-bottom {
+  from { transform: translateY(100%); }
+}
+
+@keyframes peek-out-right {
+  to { transform: translateX(100%); }
+}
+
+@keyframes peek-out-bottom {
+  to { transform: translateY(100%); }
+}
+
+@keyframes peek-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes peek-pop-out {
+  to { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
+.peek {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.peek-side {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.peek-right {
+  border-left: 1px solid var(--border);
+  box-shadow: -6px 0 18px rgba(0, 0, 0, 0.06);
+}
+
+.peek-bottom {
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* 本文側と見分けやすいよう、ダークでは少し明るい背景にする（--bg ごと変えてエディタの背景も揃える） */
+:root[data-theme="dark"] .peek-side {
+  --bg: #1e1e1e;
+  box-shadow: none;
+}
+
+.peek-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 8px;
+}
+
+.peek-spacer {
+  flex: 1;
+}
+
+.peek-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.peek .page {
+  padding-bottom: 80px;
+}
+
+/* 境目のつまみ。見た目の線より広い範囲でつかめるようにする */
+.peek-resizer {
+  position: relative;
+  z-index: 3;
+  flex: none;
+}
+
+.peek-resizer-right {
+  width: 8px;
+  margin: 0 -4px;
+  cursor: col-resize;
+}
+
+.peek-resizer-bottom {
+  height: 8px;
+  margin: -4px 0;
+  cursor: row-resize;
+}
+
+.peek-resizer::after {
+  content: "";
+  position: absolute;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.peek-resizer-right::after {
+  inset: 0 3px;
+}
+
+.peek-resizer-bottom::after {
+  inset: 3px 0;
+}
+
+.peek-resizer:hover::after,
+body.rs-peek-resizing .peek-resizer::after {
+  opacity: 0.6;
+}
+
+body.rs-peek-resizing {
+  user-select: none;
+}
+
+body.rs-peek-resizing-right * {
+  cursor: col-resize !important;
+}
+
+body.rs-peek-resizing-bottom * {
+  cursor: row-resize !important;
+}
+
+.peek-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 24px;
+  background: rgba(15, 15, 15, 0.45);
+  animation: peek-fade 0.15s ease-out;
+}
+
+.peek-center {
+  width: min(960px, 100%);
+  height: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: peek-pop 0.18s ease-out;
+}
+
+:root[data-theme="dark"] .peek-center {
+  --bg: var(--popover-bg);
+}
+
+@keyframes peek-fade {
+  from { opacity: 0; }
+}
+
+@keyframes peek-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
+/* 表示中の行・カード */
+.db-table tr.peeked > .db-td {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.db-card.peeked {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.db-open-mode {
+  padding: 4px 6px;
+}
+
+.db-open-mode-menu {
+  min-width: 270px;
+}
+
+.db-open-mode-menu .menu-item-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.db-open-mode-desc {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .peek-side {
+    position: fixed;
+    inset: 0;
+    z-index: 26;
+    flex-basis: auto !important;
+    border: none;
+  }
+
+  .peek-resizer {
+    display: none;
+  }
+
+  .peek-backdrop {
+    padding: 0;
+  }
+
+  .peek-center {
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .peek-backdrop,
+  .peek-center,
+  .peek-side,
+  .peek-backdrop.leaving,
+  .peek-backdrop.leaving .peek-center,
+  .peek-side.leaving {
+    animation: none;
+  }
+}

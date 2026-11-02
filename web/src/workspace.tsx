@@ -6,6 +6,11 @@ import type { PageTree } from "./tree";
 export type Workspace = {
   tree: PageTree;
   navigate: (id: string) => void;
+  /** データベースの行を、そのデータベースの設定（サイド・中央・フルページ）に従って開く。
+   *  作成直後で一覧にまだ無いページは parent で親を指定する */
+  open: (id: string, parent?: string) => void;
+  /** サイド・中央に表示中のページ */
+  peekId: string | null;
   /** 楽観的に表示を更新してから保存する */
   update: (id: string, patch: Partial<PageSummary>) => Promise<void>;
   /** parent の末尾にページを作成する。open なら作成後に開く。失敗時は null */

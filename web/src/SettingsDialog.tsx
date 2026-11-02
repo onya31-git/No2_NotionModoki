@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { PageFont } from "./pb";
-import { ACCENTS, resetSidebarWidth, updateSettings, useSettings, type ThemePref } from "./settings";
+import { ACCENTS, resetSidebarWidth, updateSettings, useSettings, type PeekPosition, type ThemePref } from "./settings";
 import { Modal } from "./ui";
 
 const FONT_OPTIONS: { value: PageFont; label: string }[] = [
@@ -40,6 +40,12 @@ export function Switch({ on, onChange, label }: { on: boolean; onChange: (on: bo
     />
   );
 }
+
+const PEEK_POSITIONS: { value: PeekPosition; label: string }[] = [
+  { value: "auto", label: "自動" },
+  { value: "right", label: "右" },
+  { value: "bottom", label: "下" },
+];
 
 const THEMES: { value: ThemePref; label: string }[] = [
   { value: "system", label: "システム設定" },
@@ -103,6 +109,25 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <button className="btn-secondary small" onClick={resetSidebarWidth}>
             元に戻す
           </button>
+        </Row>
+
+        <Row
+          title="サイド表示の位置"
+          desc="データベースのページを「サイドで開く」ときに表示する場所。自動は縦長の画面なら下、横長なら右"
+        >
+          <div className="segmented" role="radiogroup" aria-label="サイド表示の位置">
+            {PEEK_POSITIONS.map((p) => (
+              <button
+                key={p.value}
+                role="radio"
+                aria-checked={settings.peekPosition === p.value}
+                className={settings.peekPosition === p.value ? "on" : ""}
+                onClick={() => updateSettings({ peekPosition: p.value })}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </Row>
 
         <h3 className="settings-subhead">新しいページの既定スタイル</h3>

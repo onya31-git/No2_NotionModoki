@@ -10,12 +10,22 @@ import { useSettings } from "./settings";
 import { WorkspaceContext, type Workspace } from "./workspace";
 import { SearchDialog } from "./SearchDialog";
 import { TrashDialog } from "./TrashDialog";
-import { Dropdown, MenuItem, copyText, formatDate, pageLabel } from "./ui";
+import { Dropdown, MenuItem, SaveIndicator, copyText, formatDate, pageLabel } from "./ui";
+import { CenterPeek, SidePeek, usePeekPosition, usePresence } from "./Peek";
 import { CopyIcon, LinkIcon, MenuIcon, MoreIcon, MoveIcon, PlusIcon, StarIcon, TextSizeIcon, TrashIcon, WidthIcon } from "./icons";
 
 // ルーティングライブラリは使わず、?id=<pageId> でページを指定する。
 // 遷移は history.pushState で行い、バンドルを再読み込みしない。
+// データベースの行をサイド・中央に表示しているときは &p=<pageId> を付ける。
 const readId = () => new URLSearchParams(window.location.search).get("id");
+const readPeek = () => new URLSearchParams(window.location.search).get("p");
+const urlFor = (id: string | null, peek: string | null = null) => {
+  const q = new URLSearchParams();
+  if (id) q.set("id", id);
+  if (peek) q.set("p", peek);
+  const s = q.toString();
+  return s ? `?${s}` : window.location.pathname;
+};
 
 const MOBILE_QUERY = "(max-width: 768px)";
 // サイドバーのホバー表示（ピーク）はマウスのある PC 幅だけ
@@ -43,6 +53,8 @@ type Toast = { message: string; action?: { label: string; run: () => void } };
 
 export function App() {
   const [currentId, setCurrentId] = useState(readId);
+  const [peekId, setPeekId] = useState(readPeek);
+  const peekPosition = usePeekPosition();
   const [list, setList] = useState<PageSummary[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -58,7 +70,15 @@ export function App() {
   const tree = useMemo(() => buildTree(list ?? []), [list]);
   const current = currentId ? tree.byId.get(currentId) : undefined;
   // 自身、または最も近い祖先のうちゴミ箱に入っているページ（バナーの復元・削除の対象）
-  const trashedRoot = current ? [current, ...tree.ancestors(current.id).reverse()].find((p) => p.trashed) : undefined;
+  const trashedRootOf = (page: PageSummary | undefined) =>
+    page ? [page, ...tree.ancestors(page.id).reverse()].find((p) => p.trashed) : undefined;
+  const trashedRoot = trashedRootOf(current);
+  // 閉じた直後もアニメーションの間は表示を残す
+  const [leavingOrShownId, peekLeaving] = usePresence(peekId);
+  // フルページで開き直したときは、同じページを 2 つのエディタで同時に開かないよう残さずに閉じる
+  const shownPeekId = peekLeaving && leavingOrShownId === currentId ? null : leavingOrShownId;
+  const peekPage = shownPeekId ? tree.byId.get(shownPeekId) : undefined;
+  const peekMode = peekPage ? openModeOf(peekPage.parent) : "side";
 
   const reloadList = useCallback(() => {
     pages()
@@ -73,7 +93,10 @@ export function App() {
   useEffect(reloadList, [reloadList]);
 
   useEffect(() => {
-    const onPop = () => setCurrentId(readId());
+    const onPop = () => {
+      setCurrentId(readId());
+      setPeekId(readPeek());
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -116,12 +139,33 @@ export function App() {
   }, [toast]);
 
   const navigate = useCallback((id: string | null) => {
-    window.history.pushState(null, "", id ? `?id=${id}` : window.location.pathname);
+    window.history.pushState(null, "", urlFor(id));
     setCurrentId(id);
+    setPeekId(null);
     setStatus("saved");
     setSidebarOpen(false);
     setMenuOpen(false);
   }, []);
+
+  /** ページを開いたまま、行をサイド・中央に表示する */
+  const showPeek = useCallback((id: string) => {
+    window.history.pushState(null, "", urlFor(readId(), id));
+    setPeekId(id);
+  }, []);
+  const closePagePeek = useCallback(() => {
+    window.history.pushState(null, "", urlFor(readId()));
+    setPeekId(null);
+  }, []);
+
+  /** 親がデータベースなら、その設定（既定はサイド）で開き方を決める */
+  function openModeOf(parent: string | undefined) {
+    const db = parent ? tree.byId.get(parent) : undefined;
+    return db?.database ? (db.database.openIn ?? "side") : "full";
+  }
+  const openPage = (id: string, parent = tree.byId.get(id)?.parent) => {
+    if (openModeOf(parent) === "full") navigate(id);
+    else showPeek(id);
+  };
 
   const patchLocal = useCallback((id: string, patch: Partial<PageSummary>) => {
     setList((l) => l?.map((p) => (p.id === id ? { ...p, ...patch } : p)) ?? l);
@@ -166,7 +210,7 @@ export function App() {
       );
       setList((l) => [...(l ?? []), rec]);
       if (parent) setExpanded((s) => new Set(s).add(parent));
-      if (open) navigate(rec.id);
+      if (open) openPage(rec.id, parent);
       return rec;
     } catch (err) {
       setToast({ message: `ページを作成できませんでした: ${err}` });
@@ -305,10 +349,45 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleSidebar]);
 
+  // サイド表示は、本文側（行やカード以外）をクリックすると閉じる。別の行やカードのクリックは表示の切り替えになる
+  useEffect(() => {
+    if (!peekId || peekMode !== "side") return;
+    const onDown = (e: globalThis.PointerEvent) => {
+      const t = e.target as Element | null;
+      if (!t?.closest?.(".split > .main")) return;
+      if (t.closest(".db-card, .db-table tbody tr, .db-add-row, .db-toolbar, .db-board-bar, .popover")) return;
+      closePagePeek();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [peekId, peekMode, closePagePeek]);
+
+  // 表示中の行は Esc で閉じる（入力中の欄やエディタ内の Esc はそちらに任せる）
+  useEffect(() => {
+    if (!peekId || dialog) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const t = e.target as Element | null;
+      if (t?.closest?.("input, textarea, select, [contenteditable='true'], .popover, [role='menu'], .bn-container")) return;
+      closePagePeek();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [peekId, dialog, closePagePeek]);
+
   const workspace = useMemo<Workspace>(
-    () => ({ tree, navigate, update: updatePage, create: createPage, trash: trashPage, move: placePage }),
-    // createPage / trashPage / placePage は毎回作り直されるが、参照する状態は tree と同じ list から来る
-    [tree, navigate, updatePage],
+    () => ({
+      tree,
+      navigate,
+      open: openPage,
+      peekId,
+      update: updatePage,
+      create: createPage,
+      trash: trashPage,
+      move: placePage,
+    }),
+    // createPage / trashPage / placePage / openPage は毎回作り直されるが、参照する状態は tree と同じ list から来る
+    [tree, navigate, updatePage, peekId],
   );
 
   const layoutClass = [
@@ -355,6 +434,7 @@ export function App() {
         <div className="backdrop" onClick={() => setSidebarOpen(false)} />
         {sidebarCollapsed && <div className="sidebar-hotzone" onMouseEnter={openPeek} onMouseLeave={closePeek} />}
 
+        <div className={`split split-${peekPosition}`}>
         <main className="main">
           <header className="topbar">
             <button
@@ -487,6 +567,32 @@ export function App() {
             </div>
           )}
         </main>
+        {shownPeekId && peekMode === "side" && (
+          <SidePeek
+            id={shownPeekId}
+            leaving={peekLeaving}
+            position={peekPosition}
+            meta={peekPage}
+            readOnly={!!trashedRootOf(peekPage)}
+            onClose={closePagePeek}
+            onExpand={() => navigate(shownPeekId)}
+            onLocalPatch={patchLocal}
+            onUpdate={updatePage}
+          />
+        )}
+        </div>
+        {shownPeekId && peekMode === "center" && (
+          <CenterPeek
+            id={shownPeekId}
+            leaving={peekLeaving}
+            meta={peekPage}
+            readOnly={!!trashedRootOf(peekPage)}
+            onClose={closePagePeek}
+            onExpand={() => navigate(shownPeekId)}
+            onLocalPatch={patchLocal}
+            onUpdate={updatePage}
+          />
+        )}
 
         {dialog === "search" && <SearchDialog tree={tree} onSelect={navigate} onClose={closeDialog} />}
         {dialog === "settings" && <SettingsDialog onClose={closeDialog} />}
@@ -520,20 +626,5 @@ export function App() {
         )}
       </div>
     </WorkspaceContext.Provider>
-  );
-}
-
-const STATUS_LABEL: Record<SaveStatus, string> = {
-  saved: "保存済み",
-  pending: "未保存",
-  saving: "保存中…",
-  error: "保存に失敗しました",
-};
-
-function SaveIndicator({ status }: { status: SaveStatus }) {
-  return (
-    <span className={`save-indicator ${status}`} role="status">
-      {STATUS_LABEL[status]}
-    </span>
   );
 }

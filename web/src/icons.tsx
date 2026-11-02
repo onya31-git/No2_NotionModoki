@@ -246,3 +246,63 @@ export const EyeIcon = () => (
     <circle cx="12" cy="12" r="3" />
   </Icon>
 );
+
+export const ClockIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+);
+
+export const WeatherIcon = () => (
+  <Icon>
+    <path d="M8 4V2.5M3.8 5.8 2.7 4.7M2.5 10H1M12.2 5.8l1.1-1.1" />
+    <path d="M4.6 12.4A4 4 0 1 1 11.6 8" />
+    <path d="M17 20H9a4 4 0 1 1 .9-7.9A5 5 0 0 1 19.5 14 3 3 0 0 1 17 20z" />
+  </Icon>
+);
+
+export const HourglassIcon = () => (
+  <Icon>
+    <path d="M6 3h12M6 21h12M7 3v3a5 5 0 0 0 10 0V3M7 21v-3a5 5 0 0 1 10 0v3" />
+  </Icon>
+);
+
+export const QuoteIcon = () => (
+  <Icon>
+    <path d="M4 11h5v6H4v-6zm0 0c0-3 1-5 4-6M15 11h5v6h-5v-6zm0 0c0-3 1-5 4-6" />
+  </Icon>
+);
+
+export const SidePeekIcon = ({ bottom = false }: { bottom?: boolean }) => (
+  <Icon>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    {bottom ? <path d="M3 13h18" /> : <path d="M13 4v16" />}
+    {bottom ? <path d="M3 13h18v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" opacity=".25" stroke="none" /> : <path d="M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6z" fill="currentColor" opacity=".25" stroke="none" />}
+  </Icon>
+);
+
+export const CenterPeekIcon = () => (
+  <Icon>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" fillOpacity=".25" />
+  </Icon>
+);
+
+export const FullPageIcon = () => (
+  <Icon>
+    <rect x="3" y="4" width="18" height="16" rx="2" fill="currentColor" fillOpacity=".25" />
+  </Icon>
+);
+
+export const CloseIcon = () => (
+  <Icon>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Icon>
+);
+
+export const ExpandIcon = () => (
+  <Icon>
+    <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+  </Icon>
+);
