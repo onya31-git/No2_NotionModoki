@@ -234,6 +234,8 @@ export function App() {
       if (Object.keys(patch).length) void updatePage(p.id, patch);
     });
     if (parent) setExpanded((s) => new Set(s).add(parent));
+    // サイドに表示中の行をデータベースの外へ出したら、表示を閉じる（データベースの行以外はサイドに出さない）
+    if (id === peekId && !tree.byId.get(parent)?.database) closePagePeek();
   };
 
   /** サイドバーのドラッグ＆ドロップ。target の前後、または中（子の末尾）へ移す */
@@ -432,7 +434,7 @@ export function App() {
           onMouseLeave={closePeek}
         />
         <div className="backdrop" onClick={() => setSidebarOpen(false)} />
-        {sidebarCollapsed && <div className="sidebar-hotzone" onMouseEnter={openPeek} onMouseLeave={closePeek} />}
+        {sidebarCollapsed && <div className="sidebar-hotzone" onMouseEnter={openPeek} onDragEnter={openPeek} onMouseLeave={closePeek} />}
 
         <div className={`split split-${peekPosition}`}>
         <main className="main">

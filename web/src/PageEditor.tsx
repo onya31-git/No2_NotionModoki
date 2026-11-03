@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
 import { ClientResponseError } from "pocketbase";
 import { ja } from "@blocknote/core/locales";
 import { FormattingToolbarController, SideMenuController, SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
@@ -12,9 +12,10 @@ import { blockSelectionExtension } from "./blockSelection";
 import { columnDropCursor } from "./columns";
 import { useResolvedTheme } from "./settings";
 import { Dropdown } from "./ui";
-import { filterSuggestionItems, mentionMenuItems, schema, slashMenuItems, type EditorBlock } from "./blocks";
+import { filterSuggestionItems, mentionMenuItems, schema, slashMenuItems, type Editor as BlockEditor, type EditorBlock } from "./blocks";
 import { DatabaseView, PropertiesPanel } from "./database";
-import { useWorkspace } from "./workspace";
+import { draggedPage, useWorkspace } from "./workspace";
+import { registerEditor } from "./blockDrag";
 import { ImageIcon, SmileIcon } from "./icons";
 
 const SAVE_DELAY_MS = 2000;
@@ -166,6 +167,8 @@ function Editor(props: BodyProps) {
   // ライト・ダークはアプリの設定に従わせる。配色の細部とフォントは style.css で CSS 変数を上書きする
   // （テーマをオブジェクトで渡すと BlockNote が OS の設定で配色を決めてしまうため、文字列で渡す）
   const theme = useResolvedTheme();
+  // ブロックをデータベースの表・ボードへドラッグしたとき、ドラッグ元として見つけられるようにする
+  useEffect(() => registerEditor(editor), [editor]);
 
   const title = useRef(page.title);
   const scheduleSave = useAutosave(page.id, () => ({ title: title.current, content: editor.document }), props);
@@ -186,6 +189,7 @@ function Editor(props: BodyProps) {
       }}
     >
       {db?.database && <PropertiesPanel row={meta} db={db} readOnly={readOnly} />}
+      <PageDropZone editor={editor} pageId={page.id} readOnly={readOnly}>
       <BlockNoteView
         editor={editor}
         editable={!readOnly}
@@ -206,8 +210,88 @@ function Editor(props: BodyProps) {
           getItems={async (query) => mentionMenuItems(editor, ws, page.id, query)}
         />
       </BlockNoteView>
+      </PageDropZone>
     </PageHeader>
   );
+}
+
+type DropLine = { top: number; ref: string | null; placement: "before" | "after" };
+
+/**
+ * データベースの行やサイドバーのページを本文へドラッグすると、このページのサブページにして、
+ * 落とした位置にページリンクを置く（すでにリンクがあればそれを移す）
+ */
+function PageDropZone(props: { editor: BlockEditor; pageId: string; readOnly: boolean; children: ReactNode }) {
+  const { editor, pageId, readOnly } = props;
+  const ws = useWorkspace();
+  const [line, setLine] = useState<DropLine | null>(null);
+
+  const lineAt = (e: DragEvent<HTMLDivElement>): DropLine | null => {
+    const id = draggedPage();
+    // 本文に埋め込んだデータベースの中は、そちらの並べ替えに任せる
+    if (!id || readOnly || (e.target as Element).closest(".inline-db-frame")) return null;
+    if (!ws.tree.canMoveInto(id, pageId)) return null;
+    const zone = e.currentTarget.getBoundingClientRect();
+    const blocks = [...e.currentTarget.querySelectorAll<HTMLElement>(".bn-editor > .bn-block-group > .bn-block-outer")];
+    const next = blocks.find((b) => {
+      const r = b.getBoundingClientRect();
+      return e.clientY < r.top + r.height / 2;
+    });
+    const at = next ?? blocks.at(-1);
+    if (!at) return { top: 0, ref: null, placement: "after" };
+    const r = at.getBoundingClientRect();
+    return { top: (next ? r.top : r.bottom) - zone.top, ref: at.dataset.id ?? null, placement: next ? "before" : "after" };
+  };
+
+  // エディタ（ProseMirror）より先に受け取り、文字の挿入やブロックの移動として扱われないようにする。
+  // BlockNote が余白へのドロップをエディタ内へ転送し直すイベント（synthetic）は無視する
+  const handles = (e: DragEvent<HTMLDivElement>) => !(e.nativeEvent as Event & { synthetic?: boolean }).synthetic;
+
+  return (
+    <div
+      className="page-drop-zone"
+      onDragOverCapture={(e) => {
+        const next = handles(e) ? lineAt(e) : null;
+        if (!next) return setLine(null);
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        if (next.top !== line?.top || next.ref !== line.ref) setLine(next);
+      }}
+      onDragLeave={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const inside = e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom;
+        if (!inside) setLine(null);
+      }}
+      onDropCapture={(e) => {
+        const at = handles(e) ? lineAt(e) : null;
+        const id = draggedPage();
+        setLine(null);
+        if (!at || !id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const existing = findPageLink(editor.document, id);
+        if (existing?.id === at.ref) return ws.move(id, pageId);
+        if (existing) editor.removeBlocks([existing.id]);
+        const link: EditorBlock = { type: "pageLink", props: { pageId: id } };
+        const ref = at.ref && editor.getBlock(at.ref);
+        if (ref) editor.insertBlocks([link], ref, at.placement);
+        else editor.replaceBlocks(editor.document, [link]);
+        ws.move(id, pageId);
+      }}
+    >
+      {props.children}
+      {line && <div className="page-drop-line" style={{ top: line.top }} />}
+    </div>
+  );
+}
+
+function findPageLink(blocks: BlockEditor["document"], pageId: string): BlockEditor["document"][number] | undefined {
+  for (const b of blocks) {
+    if (b.type === "pageLink" && b.props.pageId === pageId) return b;
+    const inner = findPageLink(b.children, pageId);
+    if (inner) return inner;
+  }
 }
 
 /** データベースページ: 本文の代わりに表・ボードを表示する */

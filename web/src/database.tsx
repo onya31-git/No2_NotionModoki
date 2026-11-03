@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { Column, ColumnType, DatabaseConfig, OpenMode, PageSummary, PropValue, SelectOption, SortSpec } from "./pb";
 import { Dropdown, MenuItem, PageGlyph, pageLabel } from "./ui";
-import { handleLinkClick, pageHref, useWorkspace } from "./workspace";
+import { draggedPage, handleLinkClick, pageHref, startPageDrag, useWorkspace } from "./workspace";
+import { draggedBlocks, inlineText, withoutIds, type DraggedBlocks } from "./blockDrag";
 import { Switch } from "./SettingsDialog";
 import { useSettings } from "./settings";
 import {
@@ -130,7 +131,99 @@ function useDatabaseOps(db: PageSummary) {
     ws.move(id, db.id, at);
   };
 
-  return { ws, config, latest, setConfig, updateColumn, addOption, updateOption, deleteOption, setProp, moveRow };
+  /**
+   * 本文からドラッグしてきたブロックを行にして、target の前後（省略時は末尾）へ入れる。
+   * ページリンクはそのページを行として移し、それ以外は文字をタイトルに、子ブロックを本文にした新しい行にする。
+   * 行にしたブロックは元の本文から消す（データベース自身や埋め込みのデータベースはそのまま残す）
+   */
+  /** target の前後（省略時は末尾）に count 行分の場所を空けて、兄弟の sort を 1, 2, 3… に振り直す。戻り値は空けた位置 */
+  const makeRoom = (target: DropTarget | null, count: number) => {
+    const siblings = ws.tree.children.get(db.id) ?? [];
+    const at = target ? siblings.findIndex((r) => r.id === target.id) + (target.after ? 1 : 0) : siblings.length;
+    siblings.forEach((r, i) => {
+      const sort = i < at ? i + 1 : i + 1 + count;
+      if (r.sort !== sort) void ws.update(r.id, { sort });
+    });
+    return at;
+  };
+
+  /** 別のデータベースの行やサイドバーのページを、このデータベースの行として受け入れられるか */
+  const canTake = (page: PageSummary) =>
+    page.id !== db.id && page.parent !== db.id && !page.database && ws.tree.canMoveInto(page.id, db.id);
+
+  /**
+   * 移ってきた行のプロパティを、名前と型が同じ列へ引き継ぐ（セレクトは同じ名前の選択肢へ）。
+   * 元の値も残しておくので、元のデータベースへ戻せば元どおりに表示される
+   */
+  const carryProps = (page: PageSummary): Record<string, PropValue> => {
+    const from = page.parent ? ws.tree.byId.get(page.parent)?.database : null;
+    const out: Record<string, PropValue> = { ...page.props };
+    for (const src of from?.columns ?? []) {
+      const value = page.props?.[src.id];
+      const dest = config.columns.find((c) => c.name === src.name && c.type === src.type);
+      if (isEmpty(value) || !dest) continue;
+      if (src.type !== "select" && src.type !== "multi_select") {
+        out[dest.id] = value!;
+        continue;
+      }
+      const names = asIds(value).map((id) => src.options?.find((o) => o.id === id)?.name);
+      const ids = names.flatMap((n) => dest.options?.find((o) => o.name === n)?.id ?? []);
+      if (ids.length) out[dest.id] = src.type === "select" ? ids[0] : ids;
+    }
+    return out;
+  };
+
+  /** 別のデータベースの行（またはページ）を、このデータベースの target の前後（省略時は末尾）へ移す */
+  const takePage = (page: PageSummary, target: DropTarget | null, props: Record<string, PropValue> = {}) => {
+    const at = makeRoom(target, 1);
+    void ws.update(page.id, { parent: db.id, sort: at + 1, props: { ...carryProps(page), ...props } });
+  };
+
+  const dropBlocks = async (src: DraggedBlocks, target: DropTarget | null, props: Record<string, PropValue> = {}) => {
+    const { editor } = src;
+    const blocks = src.ids.map((id) => editor.getBlock(id)).filter((b) => !!b);
+    const at = makeRoom(target, blocks.length);
+
+    const done = await Promise.all(
+      blocks.map(async (block, i) => {
+        const sort = at + i + 1;
+        if (block.type === "database") return null;
+        if (block.type === "pageLink") {
+          const page = ws.tree.byId.get(block.props.pageId);
+          if (!page || page.database || !ws.tree.canMoveInto(page.id, db.id)) return null;
+          await ws.update(page.id, { parent: db.id, sort, props: { ...carryProps(page), ...props } });
+          return block.id;
+        }
+        const hasText = editor.schema.blockSchema[block.type]?.content === "inline";
+        const rec = await ws.create(
+          db.id,
+          {
+            title: hasText ? inlineText(block.content).trim() : "",
+            content: hasText ? block.children.map(withoutIds) : [withoutIds(block)],
+            props,
+            sort,
+          },
+          { open: false },
+        );
+        return rec ? block.id : null;
+      }),
+    );
+    const moved = done.filter((id) => id !== null);
+    if (moved.length) editor.removeBlocks(moved.filter((id) => editor.getBlock(id)));
+  };
+
+  /** 外から持ってきたもの（本文のブロック、別のデータベースの行・サイドバーのページ）。受け入れられなければ null */
+  const incoming = (e: DragEvent): Incoming | null => {
+    const blocks = draggedBlocks(e);
+    if (blocks) return { blocks };
+    const page = ws.tree.byId.get(draggedPage() ?? "");
+    return page && canTake(page) ? { page } : null;
+  };
+
+  const dropIncoming = (src: Incoming, target: DropTarget | null, props?: Record<string, PropValue>) =>
+    "blocks" in src ? void dropBlocks(src.blocks, target, props) : takePage(src.page, target, props);
+
+  return { ws, config, latest, setConfig, updateColumn, addOption, updateOption, deleteOption, setProp, moveRow, incoming, dropIncoming };
 }
 
 function compareRows(columns: Column[], sort: SortSpec) {
@@ -250,12 +343,29 @@ export function DatabaseView({ db, readOnly }: { db: PageSummary; readOnly: bool
 
 type Ops = ReturnType<typeof useDatabaseOps>;
 
+/** 外からドラッグしてきたもの: 本文のブロック、または別のデータベースの行・サイドバーのページ */
+type Incoming = { blocks: DraggedBlocks } | { page: PageSummary };
+
 type DropTarget = { id: string; after: boolean };
 
 /** ドラッグ中のカーソルが要素の上半分なら前、下半分なら後ろ */
 const dropTargetAt = (e: DragEvent, id: string): DropTarget => {
   const rect = e.currentTarget.getBoundingClientRect();
   return { id, after: e.clientY > rect.top + rect.height / 2 };
+};
+
+/** 本文のブロックをドラッグしているときの落とす位置: カーソルの下にある行・カードの前後（なければ null = 末尾） */
+const blockDropTarget = (e: DragEvent): DropTarget | null => {
+  const el = (e.target as Element).closest<HTMLElement>("[data-row]");
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  return { id: el.dataset.row!, after: e.clientY > rect.top + rect.height / 2 };
+};
+
+/** 最後の行の後ろ（行がなければ null = 末尾） */
+const lastIn = (rows: PageSummary[]): DropTarget | null => {
+  const last = rows.at(-1);
+  return last ? { id: last.id, after: true } : null;
 };
 
 const dropClass = (over: DropTarget | null, id: string) =>
@@ -339,16 +449,43 @@ function TableView(props: {
   const { ws, config } = ops;
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<DropTarget | null>(null);
+  /** 本文のブロックを行のない所（末尾）に落とそうとしている */
+  const [blockOver, setBlockOver] = useState(false);
   // 並べ替え（ソート）を指定している間は表示順が sort と一致しないので、手動の並べ替えはできない
   const canReorder = !readOnly && !config.sort;
 
   const endDrag = () => {
     setDragId(null);
     setOver(null);
+    setBlockOver(false);
   };
 
   return (
-    <div className="db-table-frame">
+    <div
+      className={`db-table-frame${blockOver ? " drop" : ""}`}
+      // 本文のブロックや別のデータベースの行は、エディタより先に受け取って行にする（エディタ側のドロップとして扱わせない）
+      onDragOverCapture={(e) => {
+        if (readOnly || !ops.incoming(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const target = canReorder ? blockDropTarget(e) : null;
+        setOver(target);
+        setBlockOver(!target);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setOver(null);
+        setBlockOver(false);
+      }}
+      onDropCapture={(e) => {
+        const src = !readOnly && ops.incoming(e);
+        if (!src) return;
+        e.preventDefault();
+        e.stopPropagation();
+        ops.dropIncoming(src, canReorder ? blockDropTarget(e) : null);
+        endDrag();
+      }}
+    >
       <div className="db-table-wrap">
         <table className="db-table">
           <thead>
@@ -370,9 +507,10 @@ function TableView(props: {
             {rows.map((row) => (
               <tr
                 key={row.id}
+                data-row={row.id}
                 className={`${dragId === row.id ? "dragging" : ""}${props.ops.ws.peekId === row.id ? " peeked" : ""}${dropClass(over, row.id)}`}
                 onDragOver={(e) => {
-                  if (!dragId) return;
+                  if (!dragId || dragId !== draggedPage() || !canReorder) return;
                   e.preventDefault();
                   setOver(dragId === row.id ? null : dropTargetAt(e, row.id));
                 }}
@@ -384,14 +522,13 @@ function TableView(props: {
               >
                 <td className="db-td db-td-title">
                   <div className="db-title-wrap">
-                    {canReorder && (
+                    {!readOnly && (
                       <span
                         className="db-row-handle"
                         draggable
-                        title="ドラッグして並べ替え"
+                        title={canReorder ? "ドラッグして並べ替え・サイドバーや本文へ移動" : "ドラッグしてサイドバーや本文へ移動"}
                         onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "move";
-                          e.dataTransfer.setData("text/plain", row.id);
+                          startPageDrag(e, row.id);
                           const tr = e.currentTarget.closest("tr");
                           if (tr) e.dataTransfer.setDragImage(tr, 12, tr.offsetHeight / 2);
                           setDragId(row.id);
@@ -676,8 +813,26 @@ function BoardView(props: {
           <section
             key={lane.key}
             className={`db-lane${lane.option ? ` lane-${lane.option.color}` : ""}${overGroup === lane.key ? " drop" : ""}`}
+            // 本文のブロックや別のデータベースの行は、エディタより先に受け取って行にする（エディタ側のドロップとして扱わせない）
+            onDragOverCapture={(e) => {
+              if (readOnly || !ops.incoming(e)) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setOverGroup(lane.key);
+              setOverCard(blockDropTarget(e));
+            }}
+            onDropCapture={(e) => {
+              const src = !readOnly && ops.incoming(e);
+              if (!src) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const target = blockDropTarget(e) ?? lastIn(lane.rows);
+              ops.dropIncoming(src, canReorder ? target : null, lane.key ? { [group.id]: lane.key } : {});
+              endDrag();
+            }}
+            // 行が別のデータベースへ移ると dragend が届かず dragId が残るので、今ドラッグ中のものか確かめる
             onDragOver={(e) => {
-              if (!dragId) return;
+              if (!dragId || dragId !== draggedPage()) return;
               e.preventDefault();
               setOverGroup(lane.key);
               if (!(e.target as Element).closest(".db-card")) setOverCard(null);
@@ -696,16 +851,16 @@ function BoardView(props: {
             {lane.rows.map((row) => (
               <a
                 key={row.id}
+                data-row={row.id}
                 className={`db-card${dragId === row.id ? " dragging" : ""}${ws.peekId === row.id ? " peeked" : ""}${canReorder ? dropClass(overCard, row.id) : ""}`}
                 href={pageHref(row.id)}
                 draggable={!readOnly}
                 onDragOver={(e) => {
-                  if (!dragId || !canReorder) return;
+                  if (!dragId || dragId !== draggedPage() || !canReorder) return;
                   setOverCard(dragId === row.id ? null : dropTargetAt(e, row.id));
                 }}
                 onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData("text/plain", row.id);
+                  startPageDrag(e, row.id);
                   setDragId(row.id);
                 }}
                 onDragEnd={endDrag}

@@ -3879,3 +3879,43 @@ body.rs-peek-resizing-bottom * {
     animation: none;
   }
 }
+
+/* ---------- ページのドラッグ（データベースの行・サイドバーのページを本文へ） ---------- */
+
+.page-drop-zone {
+  position: relative;
+}
+
+/* 落とす位置の横線（左右は BlockNote 本文の余白 54px に合わせる） */
+.page-drop-line {
+  position: absolute;
+  left: 54px;
+  right: 54px;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 3;
+}
+
+@media (max-width: 768px) {
+  .page-drop-line {
+    left: 16px;
+    right: 16px;
+  }
+}
+
+/* 本文のブロックを表の末尾へ落とそうとしているとき */
+.db-table-frame.drop {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: -1px;
+}
+
+/* ブロックのドラッグ中は、ドラッグ元の上に出る書式ツールバー（とその配置用の枠）がドロップ先を隠さないようにする */
+.rs-block-dragging .bn-formatting-toolbar,
+.rs-block-dragging div:has(> .bn-formatting-toolbar) {
+  pointer-events: none;
+  visibility: hidden;
+}

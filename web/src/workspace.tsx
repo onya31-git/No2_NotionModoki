@@ -1,4 +1,4 @@
-import { createContext, useContext, type MouseEvent } from "react";
+import { createContext, useContext, type DragEvent, type MouseEvent } from "react";
 import type { PageRecord, PageSummary } from "./pb";
 import type { PageTree } from "./tree";
 
@@ -36,3 +36,23 @@ export function handleLinkClick(e: MouseEvent, navigate: () => void) {
 }
 
 export const pageHref = (id: string) => `?id=${id}`;
+
+// --- ページのドラッグ（データベースの行・サイドバーのページ）。
+// dragover の間は dataTransfer の中身を読めないので、ドラッグ中のページ ID はここに持っておく
+
+let draggingPage: string | null = null;
+// 文字などほかのものをドラッグし始めたら忘れる（ページのときは直後の startPageDrag で設定し直す）
+document.addEventListener("dragstart", () => (draggingPage = null), true);
+document.addEventListener("dragend", () => (draggingPage = null));
+// 移動した行は表やボードから消え、dragend が文書まで届かないので、ドロップの処理が終わったあとにも忘れる
+document.addEventListener("drop", () => setTimeout(() => (draggingPage = null)));
+
+export function startPageDrag(e: DragEvent, id: string) {
+  e.dataTransfer.effectAllowed = "move";
+  // 文字としては渡さない（入力欄などに落としても ID が挿入されないように）
+  e.dataTransfer.setData("application/x-rasstation-page", id);
+  draggingPage = id;
+}
+
+/** アプリ内でドラッグ中のページ。ファイルや文字のドラッグなら null */
+export const draggedPage = () => draggingPage;

@@ -1,8 +1,8 @@
-import { useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { PageSummary } from "./pb";
 import type { PageTree } from "./tree";
 import { PageGlyph, pageLabel } from "./ui";
-import { handleLinkClick, pageHref } from "./workspace";
+import { draggedPage, handleLinkClick, pageHref, startPageDrag } from "./workspace";
 import { ChevronIcon, ChevronsLeftIcon, PlusIcon, SearchIcon, SettingsIcon, TrashIcon } from "./icons";
 import { SIDEBAR_MAX, SIDEBAR_MIN, resetSidebarWidth, updateSettings } from "./settings";
 
@@ -36,13 +36,34 @@ export function Sidebar(props: Props) {
   const { tree } = props;
   const [drag, setDrag] = useState<Drag | null>(null);
   const dnd: Dnd = { drag, setDrag, onMove: props.onMove };
+  // データベースの行など、サイドバーの外から持ってきたページは dragend がここに届かないので、文書全体で終わりを拾う
+  useEffect(() => {
+    const end = () => setDrag(null);
+    document.addEventListener("dragend", end);
+    document.addEventListener("drop", end);
+    return () => {
+      document.removeEventListener("dragend", end);
+      document.removeEventListener("drop", end);
+    };
+  }, []);
   const roots = tree.children.get("") ?? [];
   const favorites = [...tree.byId.values()]
     .filter((p) => p.favorite && tree.isVisible(p.id))
     .sort((a, b) => a.created.localeCompare(b.created));
 
   return (
-    <aside className="sidebar" onMouseEnter={props.onMouseEnter} onMouseLeave={props.onMouseLeave}>
+    <aside
+      className="sidebar"
+      onMouseEnter={props.onMouseEnter}
+      onMouseLeave={props.onMouseLeave}
+      // ドラッグ中はマウスの出入りが届かないので、重ねて表示しているときの開け閉めもドラッグで行う
+      onDragEnter={props.onMouseEnter}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDrag((d) => d && { ...d, over: null, pos: null });
+        props.onMouseLeave();
+      }}
+    >
       <div className="sidebar-header">
         <span className="brand-mark">R</span>
         <span className="brand">RasStation</span>
@@ -81,13 +102,15 @@ export function Sidebar(props: Props) {
           dropProps={{
             className: drag && drag.over === null && drag.pos ? "drop-root" : undefined,
             onDragOver: (e) => {
-              if (!drag) return;
+              const id = activeDrag(drag)?.id;
+              if (!id) return;
               e.preventDefault();
-              setDrag({ ...drag, over: null, pos: "inside" });
+              if (drag?.over !== null || drag.pos !== "inside") setDrag({ id, over: null, pos: "inside" });
             },
             onDrop: (e) => {
               e.preventDefault();
-              if (drag) props.onMove(drag.id, null, "inside");
+              const id = activeDrag(drag)?.id;
+              if (id) props.onMove(id, null, "inside");
               setDrag(null);
             },
           }}
@@ -174,6 +197,13 @@ function Section(props: { title: string; action?: ReactNode; dropProps?: DropPro
 
 const indent = (depth: number) => 4 + depth * 14;
 
+/** サイドバー内のドラッグ、なければ外（データベースの行など）からドラッグ中のページ */
+const activeDrag = (drag: Drag | null): Drag | null => {
+  if (drag) return drag;
+  const id = draggedPage();
+  return id ? { id, over: null, pos: null } : null;
+};
+
 type Dnd = { drag: Drag | null; setDrag: (d: Drag | null) => void; onMove: Props["onMove"] };
 
 function TreeNode({ page, depth, ctx, dnd }: { page: PageSummary; depth: number; ctx: Props; dnd?: Dnd }) {
@@ -185,7 +215,7 @@ function TreeNode({ page, depth, ctx, dnd }: { page: PageSummary; depth: number;
   const dropPos = drag && drag.over === page.id ? drag.pos : null;
 
   // 行の上端・下端付近なら前後へ、中央なら子として入れる（データベースの中へは入れない）
-  const posAt = (e: DragEvent): DropPos | null => {
+  const posAt = (e: DragEvent, drag: Drag | null): DropPos | null => {
     const r = e.currentTarget.getBoundingClientRect();
     const y = (e.clientY - r.top) / r.height;
     const pos: DropPos = isDb ? (y < 0.5 ? "before" : "after") : y < 0.25 ? "before" : y > 0.75 ? "after" : "inside";
@@ -196,20 +226,22 @@ function TreeNode({ page, depth, ctx, dnd }: { page: PageSummary; depth: number;
   const dragProps = dnd && {
     draggable: true,
     onDragStart: (e: DragEvent) => {
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", page.id);
+      startPageDrag(e, page.id);
       dnd.setDrag({ id: page.id, over: null, pos: null });
     },
     onDragEnd: () => dnd.setDrag(null),
+    // 外から持ってきたページは描画時点ではまだ分からないので、イベントのたびに確かめる
     onDragOver: (e: DragEvent) => {
+      const drag = activeDrag(dnd.drag);
       if (!drag) return;
-      const pos = posAt(e);
+      const pos = posAt(e, drag);
       if (pos) e.preventDefault();
       if (drag.over !== page.id || drag.pos !== pos) dnd.setDrag({ ...drag, over: page.id, pos });
     },
     onDrop: (e: DragEvent) => {
       e.preventDefault();
-      const pos = posAt(e);
+      const drag = activeDrag(dnd.drag);
+      const pos = posAt(e, drag);
       if (drag && pos) dnd.onMove(drag.id, page.id, pos);
       dnd.setDrag(null);
     },
