@@ -12,10 +12,14 @@ export type SelectOption = { id: string; name: string; color: string };
 export type Column = { id: string; name: string; type: ColumnType; options?: SelectOption[] };
 /** 行のタイトル列は列定義に含めず、"title" という固定 ID で扱う */
 export type SortSpec = { column: string; dir: "asc" | "desc" };
+/** セレクト・マルチセレクト列での絞り込み。options のどれかを持つ行だけ表示する（"" は空欄） */
+export type FilterSpec = { column: string; options: string[] };
 export type DatabaseConfig = {
   columns: Column[];
   view: "table" | "board";
   sort?: SortSpec | null;
+  /** 絞り込み。複数あるときはすべてに当てはまる行だけ表示する */
+  filters?: FilterSpec[];
   /** ボード表示でグループ化するセレクト列の ID */
   groupBy?: string;
   /** ボードのカードに表示しないプロパティの列 ID（新しく追加した列は表示される） */

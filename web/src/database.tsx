@@ -12,6 +12,7 @@ import {
   CheckIcon,
   DateTypeIcon,
   EyeIcon,
+  FilterIcon,
   FullPageIcon,
   LinkIcon,
   MultiSelectTypeIcon,
@@ -258,6 +259,38 @@ function compareRows(columns: Column[], sort: SortSpec) {
   };
 }
 
+/** 空欄で絞り込むときの選択肢 ID */
+const EMPTY = "";
+
+type ActiveFilter = { column: Column; options: string[] };
+
+/** 効いている絞り込み。列が消えた・セレクトでなくなった・選んだ選択肢が残っていないものは無視する */
+function activeFilters(config: DatabaseConfig): ActiveFilter[] {
+  return (config.filters ?? []).flatMap((f) => {
+    const column = config.columns.find((c) => c.id === f.column);
+    if (column?.type !== "select" && column?.type !== "multi_select") return [];
+    const options = f.options.filter((id) => id === EMPTY || column.options?.some((o) => o.id === id));
+    return options.length ? [{ column, options }] : [];
+  });
+}
+
+/** 選んだ選択肢のどれかを持つ（空欄を選んでいれば値のない行も）。複数の列ではすべてに当てはまる行 */
+const matchesFilters = (row: PageSummary, filters: ActiveFilter[]) =>
+  filters.every(({ column, options }) => {
+    const ids = asIds(row.props?.[column.id]).filter((id) => column.options?.some((o) => o.id === id));
+    return ids.length ? ids.some((id) => options.includes(id)) : options.includes(EMPTY);
+  });
+
+/** 絞り込み中に追加した行がすぐ消えないよう、新しい行に入れておく値 */
+function filterProps(filters: ActiveFilter[]) {
+  const props: Record<string, PropValue> = {};
+  for (const { column, options } of filters) {
+    if (options.includes(EMPTY)) continue;
+    props[column.id] = column.type === "select" ? options[0] : [options[0]];
+  }
+  return props;
+}
+
 // ---------------------------------------------------------------------------
 // データベースページ本体
 
@@ -267,15 +300,17 @@ export function DatabaseView({ db, readOnly }: { db: PageSummary; readOnly: bool
   const [query, setQuery] = useState("");
   const [focusId, setFocusId] = useState<string | null>(null);
 
+  const filters = useMemo(() => activeFilters(config), [config]);
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     let out = ws.tree.children.get(db.id) ?? [];
+    if (filters.length) out = out.filter((r) => matchesFilters(r, filters));
     if (q) out = out.filter((r) => pageLabel(r).toLowerCase().includes(q));
     return config.sort ? [...out].sort(compareRows(config.columns, config.sort)) : out;
-  }, [ws.tree, db.id, query, config.columns, config.sort]);
+  }, [ws.tree, db.id, query, filters, config.columns, config.sort]);
 
   const addRow = async (props: Record<string, PropValue> = {}, open = false) => {
-    const rec = await ws.create(db.id, { props }, { open });
+    const rec = await ws.create(db.id, { props: { ...filterProps(filters), ...props } }, { open });
     if (rec) setFocusId(rec.id);
   };
 
@@ -283,8 +318,6 @@ export function DatabaseView({ db, readOnly }: { db: PageSummary; readOnly: bool
     const column: Column = { id: newId(), name: `プロパティ ${config.columns.length + 1}`, type: "text" };
     setConfig({ columns: [...config.columns, column] });
   };
-
-  const sortColumn = config.sort && (config.sort.column === TITLE ? "名前" : config.columns.find((c) => c.id === config.sort!.column)?.name);
 
   return (
     <div className="db">
@@ -300,17 +333,8 @@ export function DatabaseView({ db, readOnly }: { db: PageSummary; readOnly: bool
           </button>
         </div>
         <div className="db-tools">
-          {sortColumn && (
-            <span className="db-chip">
-              <SortIcon />
-              {sortColumn}: {config.sort!.dir === "asc" ? "昇順" : "降順"}
-              {!readOnly && (
-                <button aria-label="並べ替えを解除" onClick={() => setConfig({ sort: null })}>
-                  ×
-                </button>
-              )}
-            </span>
-          )}
+          <SortMenu ops={ops} readOnly={readOnly} />
+          <FilterMenu ops={ops} filters={filters} readOnly={readOnly} />
           <OpenModeMenu value={config.openIn ?? "side"} readOnly={readOnly} onChange={(openIn) => setConfig({ openIn })} />
           <label className="db-search">
             <SearchIcon />
@@ -699,6 +723,7 @@ function ColumnHeader({ column, ops, readOnly }: { column: Column | null; ops: O
                 setConfig({
                   columns: ops.latest.current.columns.filter((c) => c.id !== column.id),
                   sort: config.sort?.column === column.id ? null : config.sort,
+                  filters: config.filters?.filter((f) => f.column !== column.id),
                 });
               })}
             >
@@ -907,6 +932,150 @@ function OpenModeIcon({ mode }: { mode: OpenMode }) {
 }
 
 /** 行（ページ）を開く方法の切り替え。設定はデータベースごとに保存する */
+/** ツールバーの並べ替え。プロパティと昇順・降順を選ぶ（列見出しのメニューからも同じ設定を変えられる） */
+function SortMenu({ ops, readOnly }: { ops: Ops; readOnly: boolean }) {
+  const { config, setConfig } = ops;
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const { sort } = config;
+  const columns = [
+    { id: TITLE, name: "名前", icon: <TextTypeIcon /> },
+    ...config.columns.map((c) => ({ id: c.id, name: c.name || "無題", icon: typeIcon(c.type) })),
+  ];
+  const current = sort ? columns.find((c) => c.id === sort.column) : undefined;
+  const label = current ? `${current.name} ${sort!.dir === "asc" ? "↑" : "↓"}` : "並べ替え";
+  return (
+    <Dropdown
+      open={open}
+      onClose={close}
+      align="right"
+      fixed
+      trigger={
+        <button
+          className={`db-board-btn${current ? " on" : ""}`}
+          disabled={readOnly}
+          title={current ? `並べ替え: ${current.name}（${sort!.dir === "asc" ? "昇順" : "降順"}）` : "並べ替え"}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <SortIcon />
+          <span className="db-tool-label">{label}</span>
+        </button>
+      }
+    >
+      <div className="menu db-col-menu">
+        <div className="db-sort-dir" role="group" aria-label="順序">
+          {(["asc", "desc"] as const).map((dir) => (
+            <button
+              key={dir}
+              className={current && sort!.dir === dir ? "on" : ""}
+              onClick={() => setConfig({ sort: { column: current?.id ?? TITLE, dir } })}
+            >
+              {dir === "asc" ? "↑ 昇順" : "↓ 降順"}
+            </button>
+          ))}
+        </div>
+        <div className="menu-label">並べ替えるプロパティ</div>
+        {columns.map((c) => (
+          <MenuItem
+            key={c.id}
+            icon={c.icon}
+            right={current?.id === c.id ? <CheckIcon /> : undefined}
+            onClick={() => setConfig({ sort: { column: c.id, dir: sort?.dir ?? "asc" } })}
+          >
+            {c.name}
+          </MenuItem>
+        ))}
+        {current && (
+          <>
+            <div className="menu-sep" />
+            <MenuItem
+              icon={<TrashIcon />}
+              onClick={() => {
+                setConfig({ sort: null });
+                close();
+              }}
+            >
+              並べ替えを解除
+            </MenuItem>
+          </>
+        )}
+      </div>
+    </Dropdown>
+  );
+}
+
+/** ツールバーの絞り込み。セレクト・マルチセレクト列の選択肢（と空欄）を選ぶ */
+function FilterMenu({ ops, filters, readOnly }: { ops: Ops; filters: ActiveFilter[]; readOnly: boolean }) {
+  const { config, setConfig } = ops;
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const columns = config.columns.filter((c) => c.type === "select" || c.type === "multi_select");
+  const chosen = (column: Column) => filters.find((f) => f.column.id === column.id)?.options ?? [];
+
+  const toggle = (column: Column, id: string) => {
+    const options = chosen(column).includes(id) ? chosen(column).filter((x) => x !== id) : [...chosen(column), id];
+    const rest = (ops.latest.current.filters ?? []).filter((f) => f.column !== column.id);
+    setConfig({ filters: options.length ? [...rest, { column: column.id, options }] : rest });
+  };
+
+  const optionName = (column: Column, id: string) =>
+    id === EMPTY ? "空欄" : column.options?.find((o) => o.id === id)?.name || "無題";
+  const summary = filters.map((f) => `${f.column.name || "無題"}: ${f.options.map((id) => optionName(f.column, id)).join("、")}`);
+  const label = filters.length === 0 ? "フィルター" : filters.length === 1 ? summary[0] : `フィルター ${filters.length}`;
+
+  return (
+    <Dropdown
+      open={open}
+      onClose={close}
+      align="right"
+      fixed
+      trigger={
+        <button
+          className={`db-board-btn${filters.length ? " on" : ""}`}
+          disabled={readOnly}
+          title={filters.length ? `フィルター\n${summary.join("\n")}` : "フィルター"}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <FilterIcon />
+          <span className="db-tool-label">{label}</span>
+        </button>
+      }
+    >
+      <div className="menu db-col-menu db-filter-menu">
+        {columns.length === 0 && <div className="menu-label">セレクトのプロパティがありません</div>}
+        {columns.map((column) => (
+          <div key={column.id} role="group" aria-label={column.name}>
+            <div className="menu-label">{column.name || "無題"}</div>
+            {[...(column.options ?? []), null].map((o) => {
+              const id = o?.id ?? EMPTY;
+              const on = chosen(column).includes(id);
+              return (
+                <MenuItem key={id} icon={<span className={`db-filter-check${on ? " on" : ""}`} aria-hidden />} onClick={() => toggle(column, id)}>
+                  {o ? <Tag option={o} /> : <span className="db-filter-empty">空欄</span>}
+                </MenuItem>
+              );
+            })}
+          </div>
+        ))}
+        {filters.length > 0 && (
+          <>
+            <div className="menu-sep" />
+            <MenuItem
+              icon={<TrashIcon />}
+              onClick={() => {
+                setConfig({ filters: [] });
+                close();
+              }}
+            >
+              フィルターを解除
+            </MenuItem>
+          </>
+        )}
+      </div>
+    </Dropdown>
+  );
+}
+
 function OpenModeMenu({ value, readOnly, onChange }: { value: OpenMode; readOnly: boolean; onChange: (m: OpenMode) => void }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);

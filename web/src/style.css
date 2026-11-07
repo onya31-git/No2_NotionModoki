@@ -1261,23 +1261,86 @@ section:hover > .sidebar-section .icon-btn,
   font-size: 14px;
 }
 
-.db-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 4px 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  font-size: 13px;
+.db-tools {
+  flex-wrap: wrap;
 }
 
-.db-chip button {
-  padding: 0 4px;
-  border: none;
+/* 並べ替え・フィルターが効いているとき */
+.db-board-btn.on {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.db-board-btn.on:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+
+.db-tool-label {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-sort-dir {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px 2px;
+}
+
+.db-sort-dir button {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: none;
-  color: inherit;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
   cursor: pointer;
+}
+
+.db-sort-dir button:hover {
+  background: var(--hover);
+}
+
+.db-sort-dir button.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.db-filter-menu {
+  min-width: 220px;
+}
+
+.db-filter-check {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 3px;
+}
+
+.db-filter-check.on {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.db-filter-check.on::after {
+  content: "";
+  width: 7px;
+  height: 4px;
+  border: solid #fff;
+  border-width: 0 0 2px 2px;
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.db-filter-empty {
+  color: var(--text-muted);
 }
 
 .btn-primary.small {
