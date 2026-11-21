@@ -3982,3 +3982,73 @@ body.rs-peek-resizing-bottom * {
   pointer-events: none;
   visibility: hidden;
 }
+
+/* ---------- テンプレート（空のページ） ---------- */
+
+.template-picker {
+  margin: 24px 54px 0;
+}
+
+.template-picker-label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.template-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-card:not(:disabled):hover {
+  background: var(--hover);
+}
+
+.template-card:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.template-icon {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.template-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.template-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .template-picker {
+    margin: 20px 16px 0;
+  }
+}

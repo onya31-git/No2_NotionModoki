@@ -16,6 +16,7 @@ import { filterSuggestionItems, mentionMenuItems, schema, slashMenuItems, type E
 import { DatabaseView, PropertiesPanel } from "./database";
 import { draggedPage, useWorkspace } from "./workspace";
 import { registerEditor } from "./blockDrag";
+import { buildTemplate, TEMPLATES, type PageTemplate } from "./templates";
 import { ImageIcon, SmileIcon } from "./icons";
 
 const SAVE_DELAY_MS = 2000;
@@ -176,6 +177,22 @@ function Editor(props: BodyProps) {
   // データベースの行なら、タイトルの下にプロパティ欄を出す
   const db = meta.parent ? ws.tree.byId.get(meta.parent) : undefined;
 
+  // 本文が空の間は、テンプレートから始められるようにする
+  const [blank, setBlank] = useState(() => isBlank(editor.document));
+  const [applying, setApplying] = useState(false);
+  const applyTemplate = async (template: PageTemplate) => {
+    setApplying(true);
+    try {
+      const blocks = await buildTemplate(template, ws, page.id);
+      editor.replaceBlocks(editor.document, blocks);
+      props.onUpdate(page.id, { ...(meta.icon ? {} : { icon: template.icon }), ...template.page?.(meta) });
+    } catch (err) {
+      console.error("template failed", err);
+    } finally {
+      setApplying(false);
+    }
+  };
+
   return (
     <PageHeader
       {...props}
@@ -193,7 +210,10 @@ function Editor(props: BodyProps) {
       <BlockNoteView
         editor={editor}
         editable={!readOnly}
-        onChange={scheduleSave}
+        onChange={() => {
+          scheduleSave();
+          setBlank(isBlank(editor.document));
+        }}
         theme={theme}
         slashMenu={false}
         sideMenu={false}
@@ -211,7 +231,35 @@ function Editor(props: BodyProps) {
         />
       </BlockNoteView>
       </PageDropZone>
+      {blank && !readOnly && <TemplatePicker busy={applying} onPick={(t) => void applyTemplate(t)} />}
     </PageHeader>
+  );
+}
+
+/** 空の段落 1 つだけ（新しいページの状態） */
+function isBlank(doc: BlockEditor["document"]) {
+  if (doc.length !== 1) return false;
+  const [b] = doc;
+  return b.type === "paragraph" && b.children.length === 0 && (!Array.isArray(b.content) || b.content.length === 0);
+}
+
+/** 空のページの下に出すテンプレートの一覧 */
+function TemplatePicker({ busy, onPick }: { busy: boolean; onPick: (t: PageTemplate) => void }) {
+  return (
+    <section className="template-picker" aria-label="テンプレートから始める" aria-busy={busy}>
+      <div className="template-picker-label">{busy ? "テンプレートを作成中…" : "テンプレートから始める"}</div>
+      <div className="template-grid">
+        {TEMPLATES.map((t) => (
+          <button key={t.id} className="template-card" disabled={busy} onClick={() => onPick(t)}>
+            <span className="template-icon">{t.icon}</span>
+            <span className="template-text">
+              <span className="template-name">{t.name}</span>
+              <span className="template-desc">{t.desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
